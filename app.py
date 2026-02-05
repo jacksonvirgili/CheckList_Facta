@@ -8,4 +8,19 @@ Original file is located at
 """
 
 import streamlit as st
-st.write("Hello")
+import gspread
+from google.oauth2.service_account import Credentials
+
+scope = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+credentials = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=scope
+)
+
+gc = gspread.authorize(credentials)
+
+st.success("Service Account conectada com sucesso 🎉")
