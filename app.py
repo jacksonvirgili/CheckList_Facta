@@ -16,10 +16,16 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
+import copy
+
+service_account_info = copy.deepcopy(st.secrets["gcp_service_account"])
+service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
+
 credentials = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
+    service_account_info,
     scopes=scope
 )
+
 
 gc = gspread.authorize(credentials)
 
