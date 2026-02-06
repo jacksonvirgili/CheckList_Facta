@@ -381,7 +381,12 @@ localizacao = streamlit_js_eval(
                 longitude: pos.coords.longitude,
                 accuracy: pos.coords.accuracy
             }),
-            (err) => resolve(null)
+            (err) => resolve(null),
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
         );
     })
     """,
