@@ -196,23 +196,23 @@ with st.form("checklist_form"):
         }
     }
 
+    # ===== SELECTS FORA DO FORM =====
+    
     regional = st.selectbox(
         "Regional",
         options=["Selecione"] + list(hierarquia.keys())
     )
-
+    
     coordenador = None
     loja = None
-
+    
     if regional != "Selecione":
-
         coordenador = st.selectbox(
             "Coordenador Regional",
             options=["Selecione"] + list(hierarquia[regional].keys())
         )
-
+    
         if coordenador != "Selecione":
-
             loja = st.selectbox(
                 "Loja",
                 options=["Selecione"] + hierarquia[regional][coordenador]
