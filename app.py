@@ -377,6 +377,10 @@ localizacao = streamlit_js_eval(
     key="get_location"
 )
 
+# Inicializa estado
+if "localizacao" not in st.session_state:
+    st.session_state.localizacao = None
+
 with st.form("checklist_form"):
     # ---- Perguntas
     st.subheader("Perguntas")
@@ -436,28 +440,9 @@ with st.form("checklist_form"):
 
     st.divider()
 
-    enviar = st.form_submit_button("Enviar Checklist")
-
-# =====================
-# SALVAR NO GOOGLE SHEETS
-# =====================
-# =====================
-# ENVIO E GEOLOCALIZAÇÃO
-# =====================
-if enviar:
-
-    # Validação campos obrigatórios
-    if (
-        regional == "Selecione" or
-        coordenador == "Selecione" or
-        loja == "Selecione" or
-        not supervisor.strip()
-    ):
-        st.error("Preencha todos os campos obrigatórios antes de enviar.")
-        st.stop()
-
-    # Captura geolocalização SOMENTE no envio
-    localizacao = streamlit_js_eval(
+# Botão para capturar localização
+if st.button("Capturar Localização"):
+    st.session_state.localizacao = streamlit_js_eval(
         js_expressions="""
         new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
@@ -470,16 +455,35 @@ if enviar:
             );
         })
         """,
-        key="get_location_submit"
+        key="get_location"
     )
 
-    if not localizacao:
-        st.error("É obrigatório permitir o acesso à localização para enviar o checklist.")
+    enviar = st.form_submit_button("Enviar Checklist")
+
+# =====================
+# SALVAR NO GOOGLE SHEETS
+# =====================
+# =====================
+# ENVIO E GEOLOCALIZAÇÃO
+# =====================
+if enviar:
+
+    if (
+        regional == "Selecione" or
+        coordenador == "Selecione" or
+        loja == "Selecione" or
+        not supervisor.strip()
+    ):
+        st.error("Preencha todos os campos obrigatórios antes de enviar.")
         st.stop()
 
-    latitude = localizacao["latitude"]
-    longitude = localizacao["longitude"]
-    precisao = localizacao["accuracy"]
+    if not st.session_state.localizacao:
+        st.error("Clique primeiro em 'Capturar Localização' antes de enviar.")
+        st.stop()
+
+    latitude = st.session_state.localizacao["latitude"]
+    longitude = st.session_state.localizacao["longitude"]
+    precisao = st.session_state.localizacao["accuracy"]
 
     agora = datetime.now(
         ZoneInfo("America/Sao_Paulo")
@@ -500,3 +504,7 @@ if enviar:
     sheet.append_row(linha)
 
     st.success("Checklist enviado com sucesso ✅")
+
+    # Limpa localização depois do envio
+    st.session_state.localizacao = None
+
