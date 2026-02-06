@@ -11,6 +11,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # =====================
 # CONFIGURAÇÕES
@@ -292,9 +293,10 @@ if enviar:
     ):
         st.error("Preencha todos os campos obrigatórios antes de enviar.")
         st.stop()
-
+        
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
     linha = [
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        agora,
         regional,
         coordenador,
         loja,
