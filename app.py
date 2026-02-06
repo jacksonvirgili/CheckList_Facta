@@ -389,6 +389,7 @@ if st.button("Capturar Localização"):
 
 if st.session_state.localizacao:
     st.success("Localização capturada com sucesso ✅")
+st.write("Debug localização:", resultado)
 
 # =====================
 # FORMULÁRIO
