@@ -195,24 +195,24 @@ hierarquia = {
 # ===== SELECTS FORA DO FORM =====
 
 regional = st.selectbox(
-"Regional",
-options=["Selecione"] + list(hierarquia.keys())
+    "Regional",
+    options=["Selecione"] + list(hierarquia.keys())
 )
 
 coordenador = "Selecione"
 loja = "Selecione"
 
 if regional != "Selecione":
-coordenador = st.selectbox(
-    "Coordenador Regional",
-    options=["Selecione"] + list(hierarquia[regional].keys())
-)
-
-if coordenador != "Selecione":
-    loja = st.selectbox(
-        "Loja",
-        options=["Selecione"] + hierarquia[regional][coordenador]
+    coordenador = st.selectbox(
+        "Coordenador Regional",
+        options=["Selecione"] + list(hierarquia[regional].keys())
     )
+
+    if coordenador != "Selecione":
+        loja = st.selectbox(
+            "Loja",
+            options=["Selecione"] + hierarquia[regional][coordenador]
+        )
 
 supervisor = st.text_input("Supervisor de Loja")
 
