@@ -441,16 +441,12 @@ with st.form("checklist_form"):
 # =====================
 # SALVAR NO GOOGLE SHEETS
 # =====================
+# =====================
+# ENVIO E GEOLOCALIZAÇÃO
+# =====================
 if enviar:
-    latitude = None
-    longitude = None
-    precisao = None
-    
-    if localizacao:
-        latitude = localizacao["latitude"]
-        longitude = localizacao["longitude"]
-        precisao = localizacao["accuracy"]
 
+    # Validação campos obrigatórios
     if (
         regional == "Selecione" or
         coordenador == "Selecione" or
@@ -459,8 +455,36 @@ if enviar:
     ):
         st.error("Preencha todos os campos obrigatórios antes de enviar.")
         st.stop()
-        
-    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Captura geolocalização SOMENTE no envio
+    localizacao = streamlit_js_eval(
+        js_expressions="""
+        new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
+                (err) => resolve(null)
+            );
+        })
+        """,
+        key="get_location_submit"
+    )
+
+    if not localizacao:
+        st.error("É obrigatório permitir o acesso à localização para enviar o checklist.")
+        st.stop()
+
+    latitude = localizacao["latitude"]
+    longitude = localizacao["longitude"]
+    precisao = localizacao["accuracy"]
+
+    agora = datetime.now(
+        ZoneInfo("America/Sao_Paulo")
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
     linha = [
         agora,
         regional,
