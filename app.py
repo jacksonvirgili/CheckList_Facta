@@ -205,7 +205,7 @@ loja = "Selecione"
 
 if regional != "Selecione":
     coordenador = st.selectbox(
-        "Coordenador Regional",
+        "Coordenador",
         options=["Selecione"] + list(hierarquia[regional].keys())
     )
 
