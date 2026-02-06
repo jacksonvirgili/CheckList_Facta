@@ -371,25 +371,45 @@ st.divider()
 # BOTÃO DE LOCALIZAÇÃO (FORA DO FORM)
 # =====================
 if st.button("Capturar Localização"):
-    st.session_state.localizacao = streamlit_js_eval(
+
+    resultado = streamlit_js_eval(
         js_expressions="""
-        new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
-                }),
-                (err) => resolve(null)
-            );
-        })
+        new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                resolve(null);
+            } else {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        resolve(null);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            }
+        });
         """,
         key="get_location"
     )
 
-if st.session_state.localizacao:
-    st.success("Localização capturada com sucesso ✅")
-st.write("Debug localização:", resultado)
+    if resultado:
+        st.session_state.localizacao = resultado
+        st.success("Localização capturada com sucesso ✅")
+    else:
+        st.error("Não foi possível capturar a localização.")
+
+# Debug temporário
+st.write("Debug localização:", st.session_state.localizacao)
+
 
 # =====================
 # FORMULÁRIO
