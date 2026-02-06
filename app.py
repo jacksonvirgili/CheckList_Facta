@@ -8,8 +8,10 @@ Original file is located at
 """
 
 # -*- coding: utf-8 -*-
+
 import streamlit as st
 import gspread
+from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -17,6 +19,7 @@ from zoneinfo import ZoneInfo
 # =====================
 # CONFIGURAÇÕES
 # =====================
+
 SHEET_ID = "11JaCc4y-htBW-cxbvbMBV28GHYlORbMM6345TSaXcgQ"
 NOME_ABA = "Respostas"
 
@@ -28,6 +31,7 @@ scope = [
 # =====================
 # GOOGLE SHEETS
 # =====================
+
 service_account_info = dict(st.secrets["gcp_service_account"])
 
 credentials = Credentials.from_service_account_info(
@@ -41,10 +45,18 @@ sheet = gc.open_by_key(SHEET_ID).worksheet(NOME_ABA)
 # =====================
 # INTERFACE
 # =====================
+
+st.set_page_config(layout="wide")
 st.title("Check-list de Acompanhamento")
 
-# ---- Identificação (FORA DO FORM)
+# =====================
+# IDENTIFICAÇÃO
+# =====================
+
 st.subheader("Identificação")
+
+# (mantive apenas exemplo resumido para não ficar gigante aqui —
+# você pode colar sua hierarquia completa exatamente como estava)
 
 hierarquia = {
     "ADRIELE DA SILVA SOUZA": {
@@ -333,8 +345,6 @@ hierarquia = {
     }
 }
 
-# ===== SELECTS FORA DO FORM =====
-
 regional = st.selectbox(
     "Regional",
     options=["Selecione"] + list(hierarquia.keys())
@@ -349,18 +359,22 @@ if regional != "Selecione":
         options=["Selecione"] + list(hierarquia[regional].keys())
     )
 
-    if coordenador != "Selecione":
-        loja = st.selectbox(
-            "Loja",
-            options=["Selecione"] + hierarquia[regional][coordenador]
-        )
+if coordenador != "Selecione":
+    loja = st.selectbox(
+        "Loja",
+        options=["Selecione"] + hierarquia[regional][coordenador]
+    )
 
 supervisor = st.text_input("Supervisor de Loja")
 
 st.divider()
 
+# =====================
+# FORMULÁRIO
+# =====================
+
 with st.form("checklist_form"):
-    # ---- Perguntas
+
     st.subheader("Perguntas")
 
     perguntas = [
@@ -421,32 +435,67 @@ with st.form("checklist_form"):
     enviar = st.form_submit_button("Enviar Checklist")
 
 # =====================
-# SALVAR NO GOOGLE SHEETS
+# ENVIO + LOCALIZAÇÃO
 # =====================
+
 if enviar:
 
+    # 🔴 Validação obrigatória
     if (
-        regional == "Selecione" or
-        coordenador == "Selecione" or
-        loja == "Selecione" or
-        not supervisor.strip()
+        regional == "Selecione"
+        or coordenador == "Selecione"
+        or loja == "Selecione"
+        or not supervisor.strip()
     ):
-        st.error("Preencha todos os campos obrigatórios antes de enviar.")
+        st.error("Preencha todos os campos obrigatórios.")
         st.stop()
 
-    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+    # 🟢 Captura localização no momento do envio
+    localizacao = streamlit_js_eval(
+        js_expressions="""
+        new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
+                (err) => resolve(null),
+                { enableHighAccuracy: true }
+            );
+        })
+        """,
+        key=f"get_location_{datetime.now().timestamp()}"
+    )
+
+    latitude = None
+    longitude = None
+    precisao = None
+
+    if localizacao:
+        latitude = localizacao["latitude"]
+        longitude = localizacao["longitude"]
+        precisao = localizacao["accuracy"]
+    else:
+        st.warning("Não foi possível capturar a localização.")
+
+    # Data/hora
+    agora = datetime.now(
+        ZoneInfo("America/Sao_Paulo")
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
     linha = [
         agora,
         regional,
         coordenador,
         loja,
         supervisor,
+        latitude,
+        longitude,
+        precisao,
         *respostas
     ]
 
     sheet.append_row(linha)
 
     st.success("Checklist enviado com sucesso ✅")
-
-
-
