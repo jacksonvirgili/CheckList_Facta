@@ -8,10 +8,8 @@ Original file is located at
 """
 
 # -*- coding: utf-8 -*-
-
 import streamlit as st
 import gspread
-from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -41,19 +39,13 @@ gc = gspread.authorize(credentials)
 sheet = gc.open_by_key(SHEET_ID).worksheet(NOME_ABA)
 
 # =====================
-# SESSION STATE
-# =====================
-if "localizacao" not in st.session_state:
-    st.session_state.localizacao = None
-
-# =====================
 # INTERFACE
 # =====================
 st.title("Check-list de Acompanhamento")
 
+# ---- Identificação (FORA DO FORM)
 st.subheader("Identificação")
 
-# (Mantive sua hierarquia original — pode colar exatamente a sua aqui)
 hierarquia = {
     "ADRIELE DA SILVA SOUZA": {
         "ANA PICOLLI": ['2222 - LOJA BALNEARIO CAMBORIU - SC',
@@ -340,9 +332,9 @@ hierarquia = {
                                                 '61058 - LOJA SAO PEDRO DA ALDEIA - RJ']
     }
 }
-# =====================
-# SELECTS
-# =====================
+
+# ===== SELECTS FORA DO FORM =====
+
 regional = st.selectbox(
     "Regional",
     options=["Selecione"] + list(hierarquia.keys())
@@ -367,55 +359,8 @@ supervisor = st.text_input("Supervisor de Loja")
 
 st.divider()
 
-# =====================
-# BOTÃO DE LOCALIZAÇÃO (FORA DO FORM)
-# =====================
-if st.button("Capturar Localização"):
-
-    resultado = streamlit_js_eval(
-        js_expressions="""
-        new Promise((resolve) => {
-            if (!navigator.geolocation) {
-                resolve(null);
-            } else {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        resolve({
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: position.coords.accuracy
-                        });
-                    },
-                    (error) => {
-                        resolve(null);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            }
-        });
-        """,
-        key="get_location"
-    )
-
-    if resultado:
-        st.session_state.localizacao = resultado
-        st.success("Localização capturada com sucesso ✅")
-    else:
-        st.error("Não foi possível capturar a localização.")
-
-# Debug temporário
-st.write("Debug localização:", st.session_state.localizacao)
-
-
-# =====================
-# FORMULÁRIO
-# =====================
 with st.form("checklist_form"):
-
+    # ---- Perguntas
     st.subheader("Perguntas")
 
     perguntas = [
@@ -476,7 +421,7 @@ with st.form("checklist_form"):
     enviar = st.form_submit_button("Enviar Checklist")
 
 # =====================
-# ENVIO
+# SALVAR NO GOOGLE SHEETS
 # =====================
 if enviar:
 
@@ -486,30 +431,16 @@ if enviar:
         loja == "Selecione" or
         not supervisor.strip()
     ):
-        st.error("Preencha todos os campos obrigatórios.")
+        st.error("Preencha todos os campos obrigatórios antes de enviar.")
         st.stop()
 
-    if not st.session_state.localizacao:
-        st.error("Clique em 'Capturar Localização' antes de enviar.")
-        st.stop()
-
-    latitude = st.session_state.localizacao["latitude"]
-    longitude = st.session_state.localizacao["longitude"]
-    precisao = st.session_state.localizacao["accuracy"]
-
-    agora = datetime.now(
-        ZoneInfo("America/Sao_Paulo")
-    ).strftime("%Y-%m-%d %H:%M:%S")
-
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
     linha = [
         agora,
         regional,
         coordenador,
         loja,
         supervisor,
-        latitude,
-        longitude,
-        precisao,
         *respostas
     ]
 
@@ -517,6 +448,5 @@ if enviar:
 
     st.success("Checklist enviado com sucesso ✅")
 
-    st.session_state.localizacao = None
 
 
