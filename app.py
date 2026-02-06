@@ -369,6 +369,38 @@ supervisor = st.text_input("Supervisor de Loja")
 
 st.divider()
 
+st.subheader("Validação de Localização")
+
+if "localizacao" not in st.session_state:
+    st.session_state.localizacao = None
+
+if st.button("Capturar Localização"):
+
+    resultado = streamlit_js_eval(
+        js_expressions="""
+        new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                }),
+                (err) => resolve(null),
+                { enableHighAccuracy: true }
+            );
+        })
+        """,
+        key="get_location"
+    )
+
+    st.session_state.localizacao = resultado
+
+if st.session_state.localizacao:
+    st.success("Localização capturada com sucesso ✅")
+else:
+    st.info("Clique em 'Capturar Localização' antes de enviar.")
+
+
 # =====================
 # FORMULÁRIO
 # =====================
@@ -471,13 +503,14 @@ if enviar:
     latitude = None
     longitude = None
     precisao = None
-
-    if localizacao:
-        latitude = localizacao["latitude"]
-        longitude = localizacao["longitude"]
-        precisao = localizacao["accuracy"]
+    
+    if st.session_state.localizacao:
+        latitude = st.session_state.localizacao["latitude"]
+        longitude = st.session_state.localizacao["longitude"]
+        precisao = st.session_state.localizacao["accuracy"]
     else:
-        st.warning("Não foi possível capturar a localização.")
+        st.error("Você precisa capturar a localização antes de enviar.")
+        st.stop()
 
     # Data/hora
     agora = datetime.now(
