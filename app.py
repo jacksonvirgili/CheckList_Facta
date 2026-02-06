@@ -33,12 +33,9 @@ scope = [
 # =====================
 
 service_account_info = dict(st.secrets["gcp_service_account"])
-
 credentials = Credentials.from_service_account_info(
-    service_account_info,
-    scopes=scope
+    service_account_info, scopes=scope
 )
-
 gc = gspread.authorize(credentials)
 sheet = gc.open_by_key(SHEET_ID).worksheet(NOME_ABA)
 
@@ -46,17 +43,23 @@ sheet = gc.open_by_key(SHEET_ID).worksheet(NOME_ABA)
 # INTERFACE
 # =====================
 
-st.set_page_config(layout="wide")
 st.title("Check-list de Acompanhamento")
+
+# =====================
+# CONTROLE SESSION STATE
+# =====================
+
+if "localizacao" not in st.session_state:
+    st.session_state.localizacao = None
+
+if "localizacao_ok" not in st.session_state:
+    st.session_state.localizacao_ok = False
 
 # =====================
 # IDENTIFICAÇÃO
 # =====================
 
 st.subheader("Identificação")
-
-# (mantive apenas exemplo resumido para não ficar gigante aqui —
-# você pode colar sua hierarquia completa exatamente como estava)
 
 hierarquia = {
     "ADRIELE DA SILVA SOUZA": {
@@ -369,10 +372,11 @@ supervisor = st.text_input("Supervisor de Loja")
 
 st.divider()
 
-st.subheader("Validação de Localização")
+# =====================
+# LOCALIZAÇÃO
+# =====================
 
-if "localizacao" not in st.session_state:
-    st.session_state.localizacao = None
+st.subheader("📍 Validação de Localização")
 
 if st.button("Capturar Localização"):
 
@@ -386,20 +390,33 @@ if st.button("Capturar Localização"):
                     accuracy: pos.coords.accuracy
                 }),
                 (err) => resolve(null),
-                { enableHighAccuracy: true }
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
             );
         })
         """,
-        key="get_location"
+        key=f"geo_{datetime.now().timestamp()}"
     )
 
-    st.session_state.localizacao = resultado
+    if resultado:
+        st.session_state.localizacao = resultado
+        st.session_state.localizacao_ok = True
+        st.success("Localização capturada com sucesso ✅")
+    else:
+        st.session_state.localizacao_ok = False
+        st.error("Não foi possível capturar a localização.")
 
-if st.session_state.localizacao:
-    st.success("Localização capturada com sucesso ✅")
+if st.session_state.localizacao_ok:
+    st.write("Latitude:", st.session_state.localizacao["latitude"])
+    st.write("Longitude:", st.session_state.localizacao["longitude"])
+    st.write("Precisão (m):", st.session_state.localizacao["accuracy"])
 else:
     st.info("Clique em 'Capturar Localização' antes de enviar.")
 
+st.divider()
 
 # =====================
 # FORMULÁRIO
@@ -409,7 +426,7 @@ with st.form("checklist_form"):
 
     st.subheader("Perguntas")
 
-    perguntas = [
+        perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY",
         "02. Aplica o CLAV semanalmente com base em evidências",
         "03. Registra e compartilha os resultados com o consultor",
@@ -451,6 +468,7 @@ with st.form("checklist_form"):
         "39. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
     ]
 
+    perguntas = [f"Pergunta {i}" for i in range(1, 40)]
     respostas = []
 
     for i, pergunta in enumerate(perguntas, start=1):
@@ -462,57 +480,31 @@ with st.form("checklist_form"):
         )
         respostas.append(resposta)
 
-    st.divider()
-
     enviar = st.form_submit_button("Enviar Checklist")
 
 # =====================
-# ENVIO + LOCALIZAÇÃO
+# SALVAR
 # =====================
 
 if enviar:
 
-    # 🔴 Validação obrigatória
     if (
         regional == "Selecione"
         or coordenador == "Selecione"
         or loja == "Selecione"
         or not supervisor.strip()
     ):
-        st.error("Preencha todos os campos obrigatórios.")
+        st.error("Preencha todos os campos obrigatórios antes de enviar.")
         st.stop()
 
-    # 🟢 Captura localização no momento do envio
-    localizacao = streamlit_js_eval(
-        js_expressions="""
-        new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
-                }),
-                (err) => resolve(null),
-                { enableHighAccuracy: true }
-            );
-        })
-        """,
-        key=f"get_location_{datetime.now().timestamp()}"
-    )
-
-    latitude = None
-    longitude = None
-    precisao = None
-    
-    if st.session_state.localizacao:
-        latitude = st.session_state.localizacao["latitude"]
-        longitude = st.session_state.localizacao["longitude"]
-        precisao = st.session_state.localizacao["accuracy"]
-    else:
+    if not st.session_state.localizacao_ok:
         st.error("Você precisa capturar a localização antes de enviar.")
         st.stop()
 
-    # Data/hora
+    latitude = st.session_state.localizacao["latitude"]
+    longitude = st.session_state.localizacao["longitude"]
+    precisao = st.session_state.localizacao["accuracy"]
+
     agora = datetime.now(
         ZoneInfo("America/Sao_Paulo")
     ).strftime("%Y-%m-%d %H:%M:%S")
@@ -532,3 +524,7 @@ if enviar:
     sheet.append_row(linha)
 
     st.success("Checklist enviado com sucesso ✅")
+
+    # Reset opcional
+    st.session_state.localizacao = None
+    st.session_state.localizacao_ok = False
