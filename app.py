@@ -390,7 +390,7 @@ localizacao = streamlit_js_eval(
         );
     })
     """,
-    key="get_location"
+    key="get_location_{datetime.now().timestamp()}"
 )
 
 # =====================
