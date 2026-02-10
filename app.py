@@ -393,68 +393,68 @@ localizacao = streamlit_js_eval(
 # =====================
 # FORMULÁRIO
 # =====================
-    st.subheader("Perguntas")
+st.subheader("Perguntas")
 
-    perguntas = [
-        "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY",
-        "02. Aplica o CLAV semanalmente com base em evidências",
-        "03. Registra e compartilha os resultados com o consultor",
-        "04. Aplica e mantem atualizado o diagnóstico do colaborador, usando as informações de maneira estratégica",
-        "05. Realiza microtreinamentos com a equipe",
-        "06. Está presente corrigindo execuções em tempo real",
-        "07. Utiliza o Teatro de Vendas",
-        "08. Aplica dinâmicas rápidas e criativas durante o dia",
-        "09. Aplica Feedback SAR com frequência",
-        "10. Supervisor consegue ser claro quanto as evidências de aplicação que serão verificadas nos próximos atendimentos/dias.",
-        "11. A equipe domina técnica de pesquisa (perguntas abertas e SPIN)",
-        "12. A equipe sabe destacar características e benefícios dos produtos comercializados",
-        "13. A equipe sabe destacar as vantagens e benefícios da empresa para o cliente",
-        "14. A equipe em loja possui total domínio nas técnicas de neutralização de objeções e as utilizam quando necessária nos atendimentos",
-        "15. A equipe em loja tem habilidade necessária para realizar o cross de todos os produtos para cada cliente.",
-        "16. Os Consultores pedem indicação ao final do atendimento",
-        "17. Os Consultores seguem os passos da jornada",
-        "18. Reconhece avanços da equipe",
-        "19. Utiliza linguagem positiva e motivadora",
-        "20. Supervisor conhece sonhos e objetivos de cada colaborador",
-        "21. Acompanha indicadores técnicos semanalmente",
-        "22. Analisa comportamento da equipe com base em dados (CLAV e Observação Direta)",
-        "23. Garante que o que foi treinado esteja sendo aplicado através da observação de evidências de aplicação.",
-        "24. Faz reuniões 1:1 com os consultores semanalmente",
-        "25. Atualiza e utiliza o PDI individual customizando as ações de treinamento em loja",
-        "26. Supervisor tem ciência de todas as pendências de contrato, e propostas negadas",
-        "27. Consultores sabem sua meta diária, acumulado, tkm, etc e sabem a importância destes números",
-        "28. O Supervisor de Loja possui de forma clara e objetiva o controle da informação de agendamentos",
-        "29. A equipe na loja conhece e domina todos os campos e funcionalidades de todos os sistemas operacionais?",
-        "30. A equipe da loja possui boa apresentação pessoal, de acordo com as políticas e normas de conduta da empresa",
-        "31. O Supervisor de Loja organiza e acompanha diariamente o rodízio de acionamentos de sua equipe?",
-        "32. O Supervisor de Loja tem acompanhado os comunicados internos, lendo entendendo, repassando e orientando sua equipe, garantindo entendimento e a execução imediata?",
-        "33. O Supervisor acompanha e trata o não pagamento da 1ª parcela débito.",
-        "34. O Supervisor atua diariamente sobre os saldos de portabilidade - aprovando, cancelando e analisando os motivos dos saldos cancelados.",
-        "35. O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?",
-        "36. Validação do QL - O Supervisor faz a gestão de posições disponíveis x vagas abertas",
-        "37. A equipe mantém assiduidade em loja (pontualidade e frequência).",
-        "38. Supervisor faz a gestão e controle das horas extras diariamente?",
-        "39. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
-    ]
+perguntas = [
+    "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY",
+    "02. Aplica o CLAV semanalmente com base em evidências",
+    "03. Registra e compartilha os resultados com o consultor",
+    "04. Aplica e mantem atualizado o diagnóstico do colaborador, usando as informações de maneira estratégica",
+    "05. Realiza microtreinamentos com a equipe",
+    "06. Está presente corrigindo execuções em tempo real",
+    "07. Utiliza o Teatro de Vendas",
+    "08. Aplica dinâmicas rápidas e criativas durante o dia",
+    "09. Aplica Feedback SAR com frequência",
+    "10. Supervisor consegue ser claro quanto as evidências de aplicação que serão verificadas nos próximos atendimentos/dias.",
+    "11. A equipe domina técnica de pesquisa (perguntas abertas e SPIN)",
+    "12. A equipe sabe destacar características e benefícios dos produtos comercializados",
+    "13. A equipe sabe destacar as vantagens e benefícios da empresa para o cliente",
+    "14. A equipe em loja possui total domínio nas técnicas de neutralização de objeções e as utilizam quando necessária nos atendimentos",
+    "15. A equipe em loja tem habilidade necessária para realizar o cross de todos os produtos para cada cliente.",
+    "16. Os Consultores pedem indicação ao final do atendimento",
+    "17. Os Consultores seguem os passos da jornada",
+    "18. Reconhece avanços da equipe",
+    "19. Utiliza linguagem positiva e motivadora",
+    "20. Supervisor conhece sonhos e objetivos de cada colaborador",
+    "21. Acompanha indicadores técnicos semanalmente",
+    "22. Analisa comportamento da equipe com base em dados (CLAV e Observação Direta)",
+    "23. Garante que o que foi treinado esteja sendo aplicado através da observação de evidências de aplicação.",
+    "24. Faz reuniões 1:1 com os consultores semanalmente",
+    "25. Atualiza e utiliza o PDI individual customizando as ações de treinamento em loja",
+    "26. Supervisor tem ciência de todas as pendências de contrato, e propostas negadas",
+    "27. Consultores sabem sua meta diária, acumulado, tkm, etc e sabem a importância destes números",
+    "28. O Supervisor de Loja possui de forma clara e objetiva o controle da informação de agendamentos",
+    "29. A equipe na loja conhece e domina todos os campos e funcionalidades de todos os sistemas operacionais?",
+    "30. A equipe da loja possui boa apresentação pessoal, de acordo com as políticas e normas de conduta da empresa",
+    "31. O Supervisor de Loja organiza e acompanha diariamente o rodízio de acionamentos de sua equipe?",
+    "32. O Supervisor de Loja tem acompanhado os comunicados internos, lendo entendendo, repassando e orientando sua equipe, garantindo entendimento e a execução imediata?",
+    "33. O Supervisor acompanha e trata o não pagamento da 1ª parcela débito.",
+    "34. O Supervisor atua diariamente sobre os saldos de portabilidade - aprovando, cancelando e analisando os motivos dos saldos cancelados.",
+    "35. O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?",
+    "36. Validação do QL - O Supervisor faz a gestão de posições disponíveis x vagas abertas",
+    "37. A equipe mantém assiduidade em loja (pontualidade e frequência).",
+    "38. Supervisor faz a gestão e controle das horas extras diariamente?",
+    "39. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
+]
 
-    respostas = []
+respostas = []
 
-    for i, pergunta in enumerate(perguntas, start=1):
-        resposta = st.radio(
-            pergunta,
-            ["Sim", "Não"],
-            horizontal=True,
-            key=f"q{i}"
-        )
-        respostas.append(resposta)
-
-    st.divider()
-
-    confirmar_localizacao = st.checkbox(
-        "Autorizo a captura da minha localização para envio do checklist"
+for i, pergunta in enumerate(perguntas, start=1):
+    resposta = st.radio(
+        pergunta,
+        ["Sim", "Não"],
+        horizontal=True,
+        key=f"q{i}"
     )
+    respostas.append(resposta)
 
-    enviar = st.form_submit_button("Enviar Checklist")
+st.divider()
+
+confirmar_localizacao = st.checkbox(
+    "Autorizo a captura da minha localização para envio do checklist"
+)
+
+enviar = st.form_submit_button("Enviar Checklist")
 
 # =====================
 # SALVAR NO GOOGLE SHEETS
