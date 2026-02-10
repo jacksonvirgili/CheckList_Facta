@@ -369,9 +369,6 @@ st.divider()
 # =====================
 # VALIDAÇÃO DE LOCALIZAÇÃO
 # =====================
-
-st.subheader("Validação de Localização")
-
 localizacao = streamlit_js_eval(
     js_expressions="""
     new Promise((resolve, reject) => {
@@ -396,14 +393,6 @@ localizacao = streamlit_js_eval(
 # =====================
 # FORMULÁRIO
 # =====================
-st.subheader("Permissão de Localização")
-
-permitir_localizacao = st.checkbox(
-    "Autorizo a captura da minha localização para validação do checklist"
-)
-
-with st.form("checklist_form"):
-
     st.subheader("Perguntas")
 
     perguntas = [
@@ -461,6 +450,10 @@ with st.form("checklist_form"):
 
     st.divider()
 
+    confirmar_localizacao = st.checkbox(
+        "Autorizo a captura da minha localização para envio do checklist"
+    )
+
     enviar = st.form_submit_button("Enviar Checklist")
 
 # =====================
@@ -468,14 +461,28 @@ with st.form("checklist_form"):
 # =====================
 if enviar:
 
-    if not permitir_localizacao:
-        st.error("Você precisa autorizar a captura da localização antes de enviar.")
+    # 🔒 Valida checkbox
+    if not confirmar_localizacao:
+        st.error("Você precisa autorizar a captura da localização para enviar.")
         st.stop()
 
+    # 🔒 Valida captura real da localização
     if not localizacao:
         st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador.")
         st.stop()
 
+    latitude = localizacao["latitude"]
+    longitude = localizacao["longitude"]
+    precisao = localizacao["accuracy"]
+
+    if (
+        regional == "Selecione"
+        or coordenador == "Selecione"
+        or loja == "Selecione"
+        or not supervisor.strip()
+    ):
+        st.error("Preencha todos os campos obrigatórios antes de enviar.")
+        st.stop()
 
     agora = datetime.now(
         ZoneInfo("America/Sao_Paulo")
@@ -496,4 +503,5 @@ if enviar:
     sheet.append_row(linha)
 
     st.success("Checklist enviado com sucesso ✅")
+
 
