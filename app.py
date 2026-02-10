@@ -396,6 +396,11 @@ localizacao = streamlit_js_eval(
 # =====================
 # FORMULÁRIO
 # =====================
+st.subheader("Permissão de Localização")
+
+permitir_localizacao = st.checkbox(
+    "Autorizo a captura da minha localização para validação do checklist"
+)
 
 with st.form("checklist_form"):
 
@@ -461,26 +466,16 @@ with st.form("checklist_form"):
 # =====================
 # SALVAR NO GOOGLE SHEETS
 # =====================
-
 if enviar:
 
-    latitude = None
-    longitude = None
-    precisao = None
-
-    if localizacao:
-        latitude = localizacao["latitude"]
-        longitude = localizacao["longitude"]
-        precisao = localizacao["accuracy"]
-
-    if (
-        regional == "Selecione"
-        or coordenador == "Selecione"
-        or loja == "Selecione"
-        or not supervisor.strip()
-    ):
-        st.error("Preencha todos os campos obrigatórios antes de enviar.")
+    if not permitir_localizacao:
+        st.error("Você precisa autorizar a captura da localização antes de enviar.")
         st.stop()
+
+    if not localizacao:
+        st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador.")
+        st.stop()
+
 
     agora = datetime.now(
         ZoneInfo("America/Sao_Paulo")
