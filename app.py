@@ -437,71 +437,73 @@ perguntas = [
     "39. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
 ]
 
-respostas = []
+with st.form("checklist_form"):
 
-for i, pergunta in enumerate(perguntas, start=1):
-    resposta = st.radio(
-        pergunta,
-        ["Sim", "Não"],
-        horizontal=True,
-        key=f"q{i}"
+    respostas = []
+    
+    for i, pergunta in enumerate(perguntas, start=1):
+        resposta = st.radio(
+            pergunta,
+            ["Sim", "Não"],
+            horizontal=True,
+            key=f"q{i}"
+        )
+        respostas.append(resposta)
+    
+    st.divider()
+    
+    confirmar_localizacao = st.checkbox(
+        "Autorizo a captura da minha localização para envio do checklist"
     )
-    respostas.append(resposta)
-
-st.divider()
-
-confirmar_localizacao = st.checkbox(
-    "Autorizo a captura da minha localização para envio do checklist"
-)
-
-enviar = st.form_submit_button("Enviar Checklist")
-
-# =====================
-# SALVAR NO GOOGLE SHEETS
-# =====================
-if enviar:
-
-    # 🔒 Valida checkbox
-    if not confirmar_localizacao:
-        st.error("Você precisa autorizar a captura da localização para enviar.")
-        st.stop()
-
-    # 🔒 Valida captura real da localização
-    if not localizacao:
-        st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador.")
-        st.stop()
-
-    latitude = localizacao["latitude"]
-    longitude = localizacao["longitude"]
-    precisao = localizacao["accuracy"]
-
-    if (
-        regional == "Selecione"
-        or coordenador == "Selecione"
-        or loja == "Selecione"
-        or not supervisor.strip()
-    ):
-        st.error("Preencha todos os campos obrigatórios antes de enviar.")
-        st.stop()
-
-    agora = datetime.now(
-        ZoneInfo("America/Sao_Paulo")
-    ).strftime("%Y-%m-%d %H:%M:%S")
-
-    linha = [
-        agora,
-        regional,
-        coordenador,
-        loja,
-        supervisor,
-        latitude,
-        longitude,
-        precisao,
-        *respostas
-    ]
-
-    sheet.append_row(linha)
-
-    st.success("Checklist enviado com sucesso ✅")
+    
+    enviar = st.form_submit_button("Enviar Checklist")
+    
+    # =====================
+    # SALVAR NO GOOGLE SHEETS
+    # =====================
+    if enviar:
+    
+        # 🔒 Valida checkbox
+        if not confirmar_localizacao:
+            st.error("Você precisa autorizar a captura da localização para enviar.")
+            st.stop()
+    
+        # 🔒 Valida captura real da localização
+        if not localizacao:
+            st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador.")
+            st.stop()
+    
+        latitude = localizacao["latitude"]
+        longitude = localizacao["longitude"]
+        precisao = localizacao["accuracy"]
+    
+        if (
+            regional == "Selecione"
+            or coordenador == "Selecione"
+            or loja == "Selecione"
+            or not supervisor.strip()
+        ):
+            st.error("Preencha todos os campos obrigatórios antes de enviar.")
+            st.stop()
+    
+        agora = datetime.now(
+            ZoneInfo("America/Sao_Paulo")
+        ).strftime("%Y-%m-%d %H:%M:%S")
+    
+        linha = [
+            agora,
+            regional,
+            coordenador,
+            loja,
+            supervisor,
+            latitude,
+            longitude,
+            precisao,
+            *respostas
+        ]
+    
+        sheet.append_row(linha)
+    
+        st.success("Checklist enviado com sucesso ✅")
 
 
