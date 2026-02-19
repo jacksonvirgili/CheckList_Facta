@@ -442,6 +442,18 @@ with st.form("checklist_form"):
     respostas = []
     
     for i, pergunta in enumerate(perguntas, start=1):
+
+
+        # Adiciona títulos sem alterar a lógica
+        if i == 1:
+            st.subheader("📌 ROTINA DIÁRIA")
+        elif i == 10:
+            st.subheader("📌 TÉCNICAS DA EQUIPE")
+        elif i == 20:
+            st.subheader("📌 GESTÃO E LIDERANÇA")
+        elif i == 30:
+            st.subheader("📌 PROCESSOS E ORGANIZAÇÃO")
+
         resposta = st.radio(
             pergunta,
             ["Sim", "Não"],
