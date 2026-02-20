@@ -576,7 +576,7 @@ localizacao = streamlit_js_eval(
 if isinstance(localizacao, dict) and localizacao.get("error"):
     st.warning(
         "Não foi possível obter a localização necessária. "
-        "Antes de iniciar o preenchimento, habilite permissões de localização para este site. \n\n"
+        "Antes de iniciar o preenchimento, habilite permissões de localização para este site e atualiza a página. \n\n"
         f"Detalhe técnico: {localizacao.get('message', 'sem detalhes')}"
     )
 
