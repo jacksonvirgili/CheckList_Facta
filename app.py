@@ -15,6 +15,18 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# IMPORTS PARA GERAÇÃO DE PDF
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.graphics.barcode import qr
+from reportlab.graphics.shapes import Drawing
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 # =====================
 # CONFIGURAÇÕES
 # =====================
@@ -87,7 +99,7 @@ hierarquia = {
                                                  '1500 - LOJA PORTO ALEGRE - ASSIS BRASIL - RS',
                                                  '19778 - LOJA PORTO ALEGRE - VIGARIO - RS',
                                                  '1424 - LOJA ROLANTE - RS',
-                                                 '1427 - LOJA SANTO ANTONIO DA PATRULHA - RS',
+                                                 '1427 - LOJA SANTO ANTONIO DA PATRIAULHA - RS',
                                                  '1403 - LOJA SAPIRANGA - RS',
                                                  '1420 - LOJA TAQUARA - RS',
                                                  '1496 - LOJA TRAMANDAI - RS',
@@ -277,10 +289,7 @@ hierarquia = {
                                   '7748 - LOJA ITAPUÃ - SALVADOR',
                                   '7900 - LOJA SALVADOR - BA',
                                   '71002 - LOJA SALVADOR - COMERCIO',
-                                  '7815 - LOJA SAO MARCOS - BA',
-                                  '93826 - LOJA ARACAJU - SE',
-                                  '23001 - LOJA MACEIO - AL',
-                                  '7764 - LOJA CAMACARI - BA'],
+                                  '7815 - LOJA SAO MARCOS - BA'],
         "RUANA VIRGINIA DA SILVA SANTOS": ['97913 - LOJA JUAZEIRO DO NORTE - CE',
                                            '97926 - LOJA QUIXADA - CE',
                                            '97928 - LOJA QUIXERAMOBIM - CE',
@@ -371,14 +380,14 @@ st.divider()
 # =====================
 localizacao = streamlit_js_eval(
     js_expressions="""
-    new Promise((resolve, reject) => {
+    new Promise((resolve, reject) =&gt; {
         navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({
+            (pos) =&gt; resolve({
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,
                 accuracy: pos.coords.accuracy
             }),
-            (err) => resolve(null),
+            (err) =&gt; resolve(null),
             {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -435,12 +444,185 @@ perguntas = [
     "37. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
 ]
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# FUNÇÃO PARA GERAR O PDF (mantendo o restante da estrutura)
+def gerar_pdf_checklist(
+    agora, regional, coordenador, loja, supervisor,
+    latitude, longitude, precisao,
+    perguntas, respostas
+):
+    """
+    Gera um PDF em memória com identificação, resumo geral, resumo por seção,
+    QR do mapa e tabela de perguntas/respostas + bloco de assinatura.
+    Retorna um BytesIO pronto para download.
+    """
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20*mm,
+        rightMargin=20*mm,
+        topMargin=15*mm,
+        bottomMargin=15*mm
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=8, spaceAfter=4))
+    styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+
+    elementos = []
+
+    # Cabeçalho
+    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
+    elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
+
+    # Metadados
+    meta_data = [
+        ["Data/Hora", agora],
+        ["Regional", regional],
+        ["Coordenador", coordenador],
+        ["Loja", loja],
+        ["Supervisor", supervisor],
+        ["Latitude", f"{latitude:.6f}" if latitude is not None else "-"],
+        ["Longitude", f"{longitude:.6f}" if longitude is not None else "-"],
+        ["Precisão (m)", f"{precisao:.0f}" if precisao is not None else "-"],
+    ]
+    tabela_meta = Table(meta_data, colWidths=[35*mm, None], hAlign="LEFT")
+    tabela_meta.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("ALIGN", (0,0), (-1,-1), "LEFT"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_meta)
+    elementos.append(Spacer(1, 6))
+
+    # Resumo geral
+    total_perguntas = len(perguntas)
+    total_sim = sum(1 for r in respostas if r == "Sim")
+    perc = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
+    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
+    elementos.append(Paragraph(f"Respostas 'Sim': {total_sim}/{total_perguntas} ({perc:.1f}%)", styles["Normal10"]))
+    elementos.append(Spacer(1, 4))
+
+    # Resumo por seção (mesma lógica dos subtítulos no formulário)
+    secoes = [
+        ("AVALIAR", 1, 3),
+        ("TREINAR", 4, 8),
+        ("DOMÍNIO DE METODO POR PARTE DA EQUIPE", 9, 15),
+        ("INCENTIVAR", 16, 18),
+        ("VERIFICAR", 19, 21),
+        ("ACOMPANHAR", 22, 25),
+        ("ACOMPANHAMENTO - OPERAÇÃO", 26, 36),
+        ("ACOMPANHAMENTO - ESTRUTURA", 37, 37),
+    ]
+    linhas_sec = [["Seção", "Sim", "Total", "%"]]
+    for nome, ini, fim in secoes:
+        sub = respostas[ini-1:fim]
+        tot = len(sub)
+        sim = sum(1 for r in sub if r == "Sim")
+        pct = (sim / tot) * 100 if tot else 0.0
+        linhas_sec.append([nome, f"{sim}", f"{tot}", f"{pct:.1f}%"])
+
+    tabela_sec = Table(linhas_sec, colWidths=[None, 18*mm, 18*mm, 18*mm])
+    tabela_sec.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_sec)
+    elementos.append(Spacer(1, 6))
+
+    # Link/QR do mapa
+    if (latitude is not None) and (longitude is not None):
+        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
+        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
+        elementos.append(Spacer(1, 3))
+        # QR de ~30mm
+        qr_size = 30 * mm
+        qr_code = qr.QrCodeWidget(url_map)
+        bounds = qr_code.getBounds()
+        w = bounds[2] - bounds[0]
+        h = bounds[3] - bounds[1]
+        scale_x = qr_size / w
+        scale_y = qr_size / h
+        drawing = Drawing(qr_size, qr_size, transform=[scale_x, 0, 0, scale_y, 0, 0])
+        drawing.add(qr_code)
+        elementos.append(drawing)
+        elementos.append(Spacer(1, 6))
+
+    # Perguntas e respostas
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
+
+    linhas = [["#", "Pergunta", "Resposta"]]
+    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        linhas.append([f"{idx:02d}", p, r])
+
+    tabela_qa = Table(linhas, colWidths=[12*mm, None, 25*mm], repeatRows=1)
+    tabela_qa.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_qa)
+    elementos.append(Spacer(1, 10))
+
+    # Assinaturas
+    elementos.append(Paragraph("Assinaturas", styles["SubTitulo"]))
+    assinatura_tbl = Table(
+        [["", ""], ["Assinatura do Supervisor", "Data"]],
+        colWidths=[120*mm, 35*mm]
+    )
+    assinatura_tbl.setStyle(TableStyle([
+        ("LINEABOVE", (0,0), (0,0), 0.8, colors.black),
+        ("LINEABOVE", (1,0), (1,0), 0.8, colors.black),
+        ("ALIGN", (0,1), (-1,1), "CENTER"),
+        ("FONTNAME", (0,1), (-1,1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,1), 9),
+        ("TOPPADDING", (0,0), (-1,-1), 12),
+    ]))
+    elementos.append(assinatura_tbl)
+    elementos.append(Spacer(1, 8))
+
+    # Rodapé
+    elementos.append(Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"]))
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 with st.form("checklist_form"):
 
     respostas = []
     
     for i, pergunta in enumerate(perguntas, start=1):
-
 
         # Adiciona títulos sem alterar a lógica
         if i == 1:
@@ -477,7 +659,7 @@ with st.form("checklist_form"):
     enviar = st.form_submit_button("Enviar Checklist")
     
     # =====================
-    # SALVAR NO GOOGLE SHEETS
+    # SALVAR NO GOOGLE SHEETS + GERAR PDF E DOWNLOAD
     # =====================
     if enviar:
     
@@ -504,9 +686,7 @@ with st.form("checklist_form"):
             st.error("Preencha todos os campos obrigatórios antes de enviar.")
             st.stop()
     
-        agora = datetime.now(
-            ZoneInfo("America/Sao_Paulo")
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
     
         linha = [
             agora,
@@ -520,8 +700,39 @@ with st.form("checklist_form"):
             *respostas
         ]
     
+        # Salva no Sheets
         sheet.append_row(linha)
     
+        # ✅ Gera o PDF após salvar
+        pdf_buffer = gerar_pdf_checklist(
+            agora=agora,
+            regional=regional,
+            coordenador=coordenador,
+            loja=loja,
+            supervisor=supervisor,
+            latitude=latitude,
+            longitude=longitude,
+            precisao=precisao,
+            perguntas=perguntas,
+            respostas=respostas
+        )
+        st.session_state["pdf_bytes"] = pdf_buffer.getvalue()
+        nome_pdf = f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf"
+    
         st.success("Checklist enviado com sucesso ✅")
+        st.download_button(
+            label="📄 Baixar PDF do checklist",
+            data=st.session_state["pdf_bytes"],
+            file_name=nome_pdf,
+            mime="application/pdf"
+        )
 
+# (Opcional) Exibe o botão fora do form no rerun
+if "pdf_bytes" in st.session_state:
+    st.download_button(
+        label="📄 Baixar PDF do checklist (último envio)",
+        data=st.session_state["pdf_bytes"],
+        file_name="checklist_ultimo_envio.pdf",
+        mime="application/pdf"
+    )
 
