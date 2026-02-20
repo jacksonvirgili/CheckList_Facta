@@ -105,7 +105,7 @@ def append_with_retry(ws, row, retries: int = 4):
             raise
 
 # =====================
-# FUNÇÃO PARA GERAR PDF
+# FUNÇÃO PARA GERAR PDF (com Resumo por Seção: Sim/Não/Total/% Sim)
 # =====================
 
 def gerar_pdf_checklist(
@@ -116,7 +116,7 @@ def gerar_pdf_checklist(
     """
     Gera um PDF em memória com:
     - Identificação
-    - Resumo geral
+    - Resumo geral (Sim/Não/Total/% Sim)
     - Resumo por Seção (Sim/Não/Total/% Sim)
     - Link do mapa (se houver localização)
     - Tabela de perguntas/respostas
@@ -124,6 +124,29 @@ def gerar_pdf_checklist(
     """
     buffer = BytesIO()
 
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    # ---- Normalização das respostas para garantir contagem correta ----
+    # Mapeia tudo para minúsculas, sem espaços externos, e remove acentos básicos
+    import unicodedata
+
+    def normaliza(txt):
+        if txt is None:
+            return ""
+        s = str(txt).strip().lower()
+        s = "".join(
+            c for c in unicodedata.normalize("NFD", s)
+            if unicodedata.category(c) != "Mn"
+        )  # remove acentos
+        return s
+
+    respostas_norm = [normaliza(r) for r in respostas]
+
+    # ---- Documento e estilos ----
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -140,7 +163,9 @@ def gerar_pdf_checklist(
 
     elementos = []
 
+    # -------------------------------
     # Cabeçalho e Identificação
+    # -------------------------------
     elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
     elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
 
@@ -171,20 +196,25 @@ def gerar_pdf_checklist(
     elementos.append(tabela_meta)
     elementos.append(Spacer(1, 6))
 
+    # -------------------------------
     # Resumo geral
+    # -------------------------------
     total_perguntas = len(perguntas)
-    total_sim = sum(1 for r in respostas if r == "Sim")
-    total_nao = sum(1 for r in respostas if r == "Não")
+    total_sim = sum(1 for r in respostas_norm if r == "sim")
+    total_nao = sum(1 for r in respostas_norm if r == "nao")  # 'não' normaliza para 'nao'
     perc_sim = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
 
     elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
     elementos.append(Paragraph(
-        f"Sim: {total_sim} | Não: {total_nao} | Total: {total_perguntas} | % Sim: {perc_sim:.1f}%",
+        f"Sim: {total_sim}  |  Não: {total_nao}  |  Total: {total_perguntas}  |  % Sim: {perc_sim:.1f}%",
         styles["Normal10"]
     ))
     elementos.append(Spacer(1, 6))
 
-    # Resumo por Seção (usando os mesmos intervalos do seu formulário)
+    # -------------------------------
+    # Resumo por Seção
+    # -------------------------------
+    # Índices 1-based para ficar alinhado com o enunciado
     secoes = [
         ("AVALIAR", 1, 3),
         ("TREINAR", 4, 8),
@@ -199,11 +229,10 @@ def gerar_pdf_checklist(
 
     linhas_sec = [["Seção", "Sim", "Não", "Total", "% Sim"]]
     for nome, ini, fim in secoes:
-        # Ajuste para índices 0-based
-        sub_rsps = respostas[ini-1:fim]
+        sub_rsps = respostas_norm[ini-1:fim]  # 0-based slice
         tot = len(sub_rsps)
-        sim = sum(1 for r in sub_rsps if r == "Sim")
-        nao = sum(1 for r in sub_rsps if r == "Não")
+        sim = sum(1 for r in sub_rsps if r == "sim")
+        nao = sum(1 for r in sub_rsps if r == "nao")
         pct = (sim / tot) * 100 if tot else 0.0
         linhas_sec.append([nome, f"{sim}", f"{nao}", f"{tot}", f"{pct:.1f}%"])
 
@@ -226,13 +255,17 @@ def gerar_pdf_checklist(
     elementos.append(tabela_sec)
     elementos.append(Spacer(1, 6))
 
+    # -------------------------------
     # Link do mapa (se houver localização)
+    # -------------------------------
     if (latitude is not None) and (longitude is not None):
         url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
         elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
         elementos.append(Spacer(1, 6))
 
+    # -------------------------------
     # Perguntas e respostas
+    # -------------------------------
     elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
     linhas = [["#", "Pergunta", "Resposta"]]
     for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
@@ -244,15 +277,12 @@ def gerar_pdf_checklist(
         ("FONTSIZE", (0,0), (-1,0), 10),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("TEXTCOLOR", (0,0), (-1,0), colors.black),
-
         ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
         ("FONTSIZE", (0,1), (-1,-1), 9),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
-
         ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
         ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
         ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
-
         ("LEFTPADDING", (0,0), (-1,-1), 4),
         ("RIGHTPADDING", (0,0), (-1,-1), 4),
         ("TOPPADDING", (0,0), (-1,-1), 3),
