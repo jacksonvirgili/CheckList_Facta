@@ -105,26 +105,26 @@ def append_with_retry(ws, row, retries: int = 4):
             raise
 
 # =====================
-# FUNÇÃO PARA GERAR PDF (com Resumo por Seção e quebra correta das perguntas)
+# FUNÇÃO PARA GERAR PDF (Resumo por Seção após Perguntas e Respostas)
 # =====================
 
 def gerar_pdf_checklist(
     agora, regional, coordenador, loja, supervisor,
-    latitude, longitude, precisao,
+    latitude, longitude, precisao,  # mantidos por compatibilidade
     perguntas, respostas
 ):
     """
     Gera um PDF em memória com:
-    - Identificação
+    - Identificação (sem lat/long/precisão)
+    - Link da localização logo abaixo da Identificação (se houver)
     - Resumo geral (Sim/Não/Total/% Sim)
-    - Resumo por Seção (Sim/Não/Total/% Sim)
-    - Link do mapa (se houver localização)
-    - Tabela de perguntas/respostas com quebra correta de linha
+    - Perguntas e Respostas (com quebra de linha)
+    - Resumo por Seção (Sim/Não/Total/% Sim) -> POSICIONADO APÓS a tabela
     Retorna um BytesIO pronto para download.
     """
     buffer = BytesIO()
 
-    # --- ReportLab imports locais para evitar conflitos no ambiente ---
+    # --- ReportLab imports locais ---
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -146,10 +146,13 @@ def gerar_pdf_checklist(
     styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
     styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4))
     styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
-    # 👇 Estilo específico para perguntas (wrap e fonte um pouco menor)
     styles.add(ParagraphStyle(name="Pergunta", fontName="Helvetica", fontSize=9, leading=11, spaceAfter=0, wordWrap="LTR"))
 
     elementos = []
+
+    # Largura útil da página
+    page_w, _ = A4
+    content_w = page_w - left - right
 
     # -------------------------------
     # Cabeçalho e Identificação
@@ -157,21 +160,14 @@ def gerar_pdf_checklist(
     elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
     elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
 
+    # -> Removidos lat/long/precisão do quadro
     meta_data = [
         ["Data/Hora", agora],
         ["Regional", regional],
         ["Coordenador", coordenador],
         ["Loja", loja],
         ["Supervisor", supervisor],
-        ["Latitude", f"{latitude:.6f}" if isinstance(latitude, (int, float)) else (str(latitude) if latitude is not None else "-")],
-        ["Longitude", f"{longitude:.6f}" if isinstance(longitude, (int, float)) else (str(longitude) if longitude is not None else "-")],
-        ["Precisão (m)", f"{precisao:.0f}" if isinstance(precisao, (int, float)) else (str(precisao) if precisao is not None else "-")],
     ]
-
-    # Largura útil da página (para calcular colunas depois também)
-    page_w, _ = A4
-    content_w = page_w - left - right
-
     tabela_meta = Table(meta_data, colWidths=[40*mm, content_w - 40*mm], hAlign="LEFT")
     tabela_meta.setStyle(TableStyle([
         ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
@@ -187,10 +183,17 @@ def gerar_pdf_checklist(
         ("BOTTOMPADDING", (0,0), (-1,-1), 3),
     ]))
     elementos.append(tabela_meta)
-    elementos.append(Spacer(1, 6))
+
+    # Link de localização logo abaixo (se houver)
+    if (latitude is not None) and (longitude is not None):
+        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
+        elementos.append(Spacer(1, 4))
+        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
+
+    elementos.append(Spacer(1, 8))
 
     # -------------------------------
-    # Normalização das respostas (garante contagem robusta)
+    # Normalização das respostas (para contar Sim/Não com robustez)
     # -------------------------------
     import unicodedata
     def normaliza(txt):
@@ -218,7 +221,59 @@ def gerar_pdf_checklist(
     elementos.append(Spacer(1, 6))
 
     # -------------------------------
-    # Resumo por Seção
+    # Perguntas e respostas (com wrap)
+    # -------------------------------
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
+
+    num_w = 12*mm
+    resp_w = 25*mm
+    pergunta_w = content_w - (num_w + resp_w)
+
+    # Cabeçalho
+    linhas_qa = [
+        [Paragraph("#", styles["Normal10"]),
+         Paragraph("Pergunta", styles["Normal10"]),
+         Paragraph("Resposta", styles["Normal10"])]
+    ]
+
+    # Linhas com as perguntas como Paragraph (wrap automático)
+    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        p_par = Paragraph(p, styles["Pergunta"])
+        r_par = Paragraph(r, styles["Normal10"])
+        linhas_qa.append([Paragraph(f"{idx:02d}", styles["Normal10"]), p_par, r_par])
+
+    tabela_qa = Table(
+        linhas_qa,
+        colWidths=[num_w, pergunta_w, resp_w],
+        repeatRows=1,      # repete cabeçalho em cada página
+        splitByRow=1,      # permite quebrar linhas entre páginas
+        hAlign="LEFT"
+    )
+    tabela_qa.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
+
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+
+    elementos.append(tabela_qa)
+    elementos.append(Spacer(1, 8))
+
+    # -------------------------------
+    # Resumo por Seção (AGORA AQUI, APÓS A TABELA)
     # -------------------------------
     secoes = [
         ("AVALIAR", 1, 3),
@@ -241,14 +296,17 @@ def gerar_pdf_checklist(
         pct = (sim / tot) * 100 if tot else 0.0
         linhas_sec.append([nome, f"{sim}", f"{nao}", f"{tot}", f"{pct:.1f}%"])
 
-    # Larguras para a tabela de resumo por seção
     col_sec_sim = 18*mm
     col_sec_nao = 18*mm
     col_sec_tot = 18*mm
     col_sec_pct = 18*mm
     col_sec_nome = content_w - (col_sec_sim + col_sec_nao + col_sec_tot + col_sec_pct)
 
-    tabela_sec = Table(linhas_sec, colWidths=[col_sec_nome, col_sec_sim, col_sec_nao, col_sec_tot, col_sec_pct], hAlign="LEFT")
+    tabela_sec = Table(
+        linhas_sec,
+        colWidths=[col_sec_nome, col_sec_sim, col_sec_nao, col_sec_tot, col_sec_pct],
+        hAlign="LEFT"
+    )
     tabela_sec.setStyle(TableStyle([
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
         ("FONTSIZE", (0,0), (-1,0), 10),
@@ -265,64 +323,6 @@ def gerar_pdf_checklist(
         ("BOTTOMPADDING", (0,0), (-1,-1), 3),
     ]))
     elementos.append(tabela_sec)
-    elementos.append(Spacer(1, 6))
-
-    # -------------------------------
-    # Link do mapa (se houver localização)
-    # -------------------------------
-    if (latitude is not None) and (longitude is not None):
-        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
-        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
-        elementos.append(Spacer(1, 6))
-
-    # -------------------------------
-    # Perguntas e respostas (com wrap)
-    # -------------------------------
-    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
-
-    # Calcular larguras das colunas com base na largura útil
-    num_w = 12*mm
-    resp_w = 25*mm
-    pergunta_w = content_w - (num_w + resp_w)
-
-    # Cabeçalho
-    linhas = [[Paragraph("#", styles["Normal10"]), Paragraph("Pergunta", styles["Normal10"]), Paragraph("Resposta", styles["Normal10"])]]
-
-    # Linhas com as perguntas como Paragraph (wrap automático)
-    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
-        p_par = Paragraph(p, styles["Pergunta"])  # 👈 isso faz o wrap
-        r_par = Paragraph(r, styles["Normal10"])
-        linhas.append([Paragraph(f"{idx:02d}", styles["Normal10"]), p_par, r_par])
-
-    tabela_qa = Table(
-        linhas,
-        colWidths=[num_w, pergunta_w, resp_w],
-        repeatRows=1,      # repete cabeçalho em cada página
-        splitByRow=1,      # permite quebrar linhas entre páginas
-        hAlign="LEFT"
-    )
-
-    tabela_qa.setStyle(TableStyle([
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,0), 10),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
-
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,1), (-1,-1), 9),
-
-        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
-
-        ("LEFTPADDING", (0,0), (-1,-1), 4),
-        ("RIGHTPADDING", (0,0), (-1,-1), 4),
-        ("TOPPADDING", (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-    ]))
-
-    elementos.append(tabela_qa)
     elementos.append(Spacer(1, 8))
 
     # Rodapé
