@@ -8,16 +8,18 @@ Original file is located at
 """
 
 # -*- coding: utf-8 -*-
-import streamlit as st
-import gspread
-from streamlit_js_eval import streamlit_js_eval
-from google.oauth2.service_account import Credentials
+import time
+from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# IMPORTS PARA GERAÇÃO DE PDF
-from io import BytesIO
+import streamlit as st
+import gspread
+from gspread.exceptions import APIError, WorksheetNotFound
+from streamlit_js_eval import streamlit_js_eval
+from google.oauth2.service_account import Credentials
+
+# ReportLab - PDF
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -25,7 +27,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 
 # =====================
 # CONFIGURAÇÕES
@@ -36,33 +38,263 @@ NOME_ABA = "Respostas"
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
+    "https://www.googleapis.com/auth/drive",
 ]
 
 # =====================
-# GOOGLE SHEETS
+# GOOGLE SHEETS (credenciais)
 # =====================
 
+# Assegure-se de ter configurado st.secrets["gcp_service_account"] corretamente
 service_account_info = dict(st.secrets["gcp_service_account"])
 
 credentials = Credentials.from_service_account_info(
     service_account_info,
     scopes=scope
 )
-
 gc = gspread.authorize(credentials)
-sheet = gc.open_by_key(SHEET_ID).worksheet(NOME_ABA)
+
+
+# =====================
+# FUNÇÕES AUXILIARES
+# =====================
+
+def get_worksheet(gc_client, sheet_id: str, tab_name: str):
+    """
+    Abre a planilha e retorna a worksheet (aba) desejada.
+    Traz mensagens de erro amigáveis em caso de falha.
+    """
+    try:
+        sh = gc_client.open_by_key(sheet_id)
+    except APIError as e:
+        # Tenta extrair detalhes do erro
+        detail = ""
+        try:
+            detail = e.response.json()
+        except Exception:
+            # fallback
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            body = getattr(getattr(e, "response", None), "text", "")[:400]
+            detail = f"status={code} body={body}"
+        st.error(
+            "❌ Erro ao abrir a planilha no Google Sheets.\n\n"
+            "• Verifique se a Service Account tem acesso (Compartilhar como Editor)\n"
+            "• Confirme se o SHEET_ID está correto\n"
+            "• Garanta que as APIs Google Sheets e Google Drive estão habilitadas no projeto da credencial\n\n"
+            f"Detalhes técnicos: {detail}"
+        )
+        st.stop()
+
+    try:
+        ws = sh.worksheet(tab_name)
+    except WorksheetNotFound:
+        st.error(f"❌ A aba '{tab_name}' não existe na planilha. Crie essa aba ou ajuste NOME_ABA.")
+        st.stop()
+
+    return ws
+
+
+def append_with_retry(ws, row, retries: int = 4):
+    """
+    Faz append_row com tentativas/retry e backoff exponencial
+    em caso de erros transitórios como 429/500/503.
+    """
+    for i in range(retries):
+        try:
+            ws.append_row(row)
+            return True
+        except APIError as e:
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            if code in (429, 500, 503) and i < retries - 1:
+                # Backoff exponencial com pequeno jitter
+                sleep_s = (2 ** i) + (0.3 * i)
+                time.sleep(sleep_s)
+                continue
+            raise
+
+
+def gerar_pdf_checklist(
+    agora, regional, coordenador, loja, supervisor,
+    latitude, longitude, precisao,
+    perguntas, respostas
+):
+    """
+    Gera um PDF em memória com:
+    - Identificação
+    - Resumo geral
+    - Resumo por seção
+    - Link + QR Code do mapa (se houver localização)
+    - Tabela de perguntas/respostas
+    - Bloco de assinatura
+    Retorna um BytesIO pronto para download.
+    """
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20*mm,
+        rightMargin=20*mm,
+        topMargin=15*mm,
+        bottomMargin=15*mm
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=8, spaceAfter=4))
+    styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+
+    elementos = []
+
+    # Cabeçalho
+    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
+    elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
+
+    # Metadados
+    meta_data = [
+        ["Data/Hora", agora],
+        ["Regional", regional],
+        ["Coordenador", coordenador],
+        ["Loja", loja],
+        ["Supervisor", supervisor],
+        ["Latitude", f"{latitude:.6f}" if latitude is not None else "-"],
+        ["Longitude", f"{longitude:.6f}" if longitude is not None else "-"],
+        ["Precisão (m)", f"{precisao:.0f}" if precisao is not None else "-"],
+    ]
+    tabela_meta = Table(meta_data, colWidths=[35*mm, None], hAlign="LEFT")
+    tabela_meta.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("ALIGN", (0,0), (-1,-1), "LEFT"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_meta)
+    elementos.append(Spacer(1, 6))
+
+    # Resumo geral
+    total_perguntas = len(perguntas)
+    total_sim = sum(1 for r in respostas if r == "Sim")
+    perc = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
+    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
+    elementos.append(Paragraph(f"Respostas 'Sim': {total_sim}/{total_perguntas} ({perc:.1f}%)", styles["Normal10"]))
+    elementos.append(Spacer(1, 4))
+
+    # Resumo por seção (mesma lógica dos subtítulos no formulário)
+    secoes = [
+        ("AVALIAR", 1, 3),
+        ("TREINAR", 4, 8),
+        ("DOMÍNIO DE METODO POR PARTE DA EQUIPE", 9, 15),
+        ("INCENTIVAR", 16, 18),
+        ("VERIFICAR", 19, 21),
+        ("ACOMPANHAR", 22, 25),
+        ("ACOMPANHAMENTO - OPERAÇÃO", 26, 36),
+        ("ACOMPANHAMENTO - ESTRUTURA", 37, 37),
+    ]
+    linhas_sec = [["Seção", "Sim", "Total", "%"]]
+    for nome, ini, fim in secoes:
+        sub = respostas[ini-1:fim]
+        tot = len(sub)
+        sim = sum(1 for r in sub if r == "Sim")
+        pct = (sim / tot) * 100 if tot else 0.0
+        linhas_sec.append([nome, f"{sim}", f"{tot}", f"{pct:.1f}%"])
+
+    tabela_sec = Table(linhas_sec, colWidths=[None, 18*mm, 18*mm, 18*mm])
+    tabela_sec.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_sec)
+    elementos.append(Spacer(1, 6))
+
+    # Link/QR do mapa
+    if (latitude is not None) and (longitude is not None):
+        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
+        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
+        elementos.append(Spacer(1, 3))
+        # QR de ~30mm
+        qr_size = 30 * mm
+        qr_code = qr.QrCodeWidget(url_map)
+        bounds = qr_code.getBounds()
+        w = bounds[2] - bounds[0]
+        h = bounds[3] - bounds[1]
+        scale_x = qr_size / w
+        scale_y = qr_size / h
+        drawing = Drawing(qr_size, qr_size, transform=[scale_x, 0, 0, scale_y, 0, 0])
+        drawing.add(qr_code)
+        elementos.append(drawing)
+        elementos.append(Spacer(1, 6))
+
+    # Perguntas e respostas
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
+
+    linhas = [["#", "Pergunta", "Resposta"]]
+    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        linhas.append([f"{idx:02d}", p, r])
+
+    tabela_qa = Table(linhas, colWidths=[12*mm, None, 25*mm], repeatRows=1)
+    tabela_qa.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_qa)
+    elementos.append(Spacer(1, 10))
+
+    # Assinaturas
+    elementos.append(Paragraph("Assinaturas", styles["SubTitulo"]))
+    assinatura_tbl = Table(
+        [["", ""], ["Assinatura do Supervisor", "Data"]],
+        colWidths=[120*mm, 35*mm]
+    )
+    assinatura_tbl.setStyle(TableStyle([
+        ("LINEABOVE", (0,0), (0,0), 0.8, colors.black),
+        ("LINEABOVE", (1,0), (1,0), 0.8, colors.black),
+        ("ALIGN", (0,1), (-1,1), "CENTER"),
+        ("FONTNAME", (0,1), (-1,1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,1), 9),
+        ("TOPPADDING", (0,0), (-1,-1), 12),
+    ]))
+    elementos.append(assinatura_tbl)
+    elementos.append(Spacer(1, 8))
+
+    # Rodapé
+    elementos.append(Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"]))
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+
 
 # =====================
 # INTERFACE
 # =====================
 
 st.title("Check-list de Acompanhamento")
-
-# =====================
-# IDENTIFICAÇÃO (FORA DO FORM)
-# =====================
-
 st.subheader("Identificação")
 
 hierarquia = {
@@ -99,7 +331,7 @@ hierarquia = {
                                                  '1500 - LOJA PORTO ALEGRE - ASSIS BRASIL - RS',
                                                  '19778 - LOJA PORTO ALEGRE - VIGARIO - RS',
                                                  '1424 - LOJA ROLANTE - RS',
-                                                 '1427 - LOJA SANTO ANTONIO DA PATRIAULHA - RS',
+                                                 '1427 - LOJA SANTO ANTONIO DA PATRULHA - RS',
                                                  '1403 - LOJA SAPIRANGA - RS',
                                                  '1420 - LOJA TAQUARA - RS',
                                                  '1496 - LOJA TRAMANDAI - RS',
@@ -289,7 +521,10 @@ hierarquia = {
                                   '7748 - LOJA ITAPUÃ - SALVADOR',
                                   '7900 - LOJA SALVADOR - BA',
                                   '71002 - LOJA SALVADOR - COMERCIO',
-                                  '7815 - LOJA SAO MARCOS - BA'],
+                                  '7815 - LOJA SAO MARCOS - BA',
+                                  '93826 - LOJA ARACAJU - SE',
+                                  '23001 - LOJA MACEIO - AL',
+                                  '7764 - LOJA CAMACARI - BA'],
         "RUANA VIRGINIA DA SILVA SANTOS": ['97913 - LOJA JUAZEIRO DO NORTE - CE',
                                            '97926 - LOJA QUIXADA - CE',
                                            '97928 - LOJA QUIXERAMOBIM - CE',
@@ -350,7 +585,6 @@ hierarquia = {
 }
 
 # ===== SELECTS FORA DO FORM =====
-
 regional = st.selectbox(
     "Regional",
     options=["Selecione"] + list(hierarquia.keys())
@@ -378,6 +612,7 @@ st.divider()
 # =====================
 # VALIDAÇÃO DE LOCALIZAÇÃO
 # =====================
+# Key estável para não reexecutar a cada rerun e evitar ruído
 localizacao = streamlit_js_eval(
     js_expressions="""
     new Promise((resolve) => {
@@ -400,8 +635,22 @@ localizacao = streamlit_js_eval(
         );
     })
     """,
-    key=f"get_location_{datetime.now().timestamp()}"
+    key="get_location_once"
 )
+
+# Opcional: Mostrar aviso se houver erro de localização
+if isinstance(localizacao, dict) and localizacao.get("error"):
+    st.warning(
+        "Não foi possível obter a geolocalização agora. "
+        "Tente novamente (melhor sinal de GPS/Wi‑Fi) ou recarregue a página.\n\n"
+        f"Detalhe técnico: {localizacao.get('message', 'sem detalhes')}"
+    )
+
+# Botão para forçar recaptura (opcional)
+if st.button("🔄 Capturar localização agora"):
+    # Força rerun, reexecutando o componente com a mesma key (o navegador tende a reutilizar a autorização)
+    st.rerun()
+
 
 # =====================
 # FORMULÁRIO
@@ -448,187 +697,13 @@ perguntas = [
     "37. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
 ]
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# FUNÇÃO PARA GERAR O PDF (mantendo o restante da estrutura)
-def gerar_pdf_checklist(
-    agora, regional, coordenador, loja, supervisor,
-    latitude, longitude, precisao,
-    perguntas, respostas
-):
-    """
-    Gera um PDF em memória com identificação, resumo geral, resumo por seção,
-    QR do mapa e tabela de perguntas/respostas + bloco de assinatura.
-    Retorna um BytesIO pronto para download.
-    """
-    buffer = BytesIO()
-
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=20*mm,
-        rightMargin=20*mm,
-        topMargin=15*mm,
-        bottomMargin=15*mm
-    )
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
-    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=8, spaceAfter=4))
-    styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
-
-    elementos = []
-
-    # Cabeçalho
-    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
-    elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
-
-    # Metadados
-    meta_data = [
-        ["Data/Hora", agora],
-        ["Regional", regional],
-        ["Coordenador", coordenador],
-        ["Loja", loja],
-        ["Supervisor", supervisor],
-        ["Latitude", f"{latitude:.6f}" if latitude is not None else "-"],
-        ["Longitude", f"{longitude:.6f}" if longitude is not None else "-"],
-        ["Precisão (m)", f"{precisao:.0f}" if precisao is not None else "-"],
-    ]
-    tabela_meta = Table(meta_data, colWidths=[35*mm, None], hAlign="LEFT")
-    tabela_meta.setStyle(TableStyle([
-        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,0), (-1,-1), 10),
-        ("ALIGN", (0,0), (-1,-1), "LEFT"),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
-        ("LEFTPADDING", (0,0), (-1,-1), 4),
-        ("RIGHTPADDING", (0,0), (-1,-1), 4),
-        ("TOPPADDING", (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-    ]))
-    elementos.append(tabela_meta)
-    elementos.append(Spacer(1, 6))
-
-    # Resumo geral
-    total_perguntas = len(perguntas)
-    total_sim = sum(1 for r in respostas if r == "Sim")
-    perc = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
-    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
-    elementos.append(Paragraph(f"Respostas 'Sim': {total_sim}/{total_perguntas} ({perc:.1f}%)", styles["Normal10"]))
-    elementos.append(Spacer(1, 4))
-
-    # Resumo por seção (mesma lógica dos subtítulos no formulário)
-    secoes = [
-        ("AVALIAR", 1, 3),
-        ("TREINAR", 4, 8),
-        ("DOMÍNIO DE METODO POR PARTE DA EQUIPE", 9, 15),
-        ("INCENTIVAR", 16, 18),
-        ("VERIFICAR", 19, 21),
-        ("ACOMPANHAR", 22, 25),
-        ("ACOMPANHAMENTO - OPERAÇÃO", 26, 36),
-        ("ACOMPANHAMENTO - ESTRUTURA", 37, 37),
-    ]
-    linhas_sec = [["Seção", "Sim", "Total", "%"]]
-    for nome, ini, fim in secoes:
-        sub = respostas[ini-1:fim]
-        tot = len(sub)
-        sim = sum(1 for r in sub if r == "Sim")
-        pct = (sim / tot) * 100 if tot else 0.0
-        linhas_sec.append([nome, f"{sim}", f"{tot}", f"{pct:.1f}%"])
-
-    tabela_sec = Table(linhas_sec, colWidths=[None, 18*mm, 18*mm, 18*mm])
-    tabela_sec.setStyle(TableStyle([
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,0), 10),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("ALIGN", (1,1), (-1,-1), "CENTER"),
-        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,1), (-1,-1), 9),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
-        ("LEFTPADDING", (0,0), (-1,-1), 4),
-        ("RIGHTPADDING", (0,0), (-1,-1), 4),
-        ("TOPPADDING", (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-    ]))
-    elementos.append(tabela_sec)
-    elementos.append(Spacer(1, 6))
-
-    # Link/QR do mapa
-    if (latitude is not None) and (longitude is not None):
-        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
-        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
-        elementos.append(Spacer(1, 3))
-        # QR de ~30mm
-        qr_size = 30 * mm
-        qr_code = qr.QrCodeWidget(url_map)
-        bounds = qr_code.getBounds()
-        w = bounds[2] - bounds[0]
-        h = bounds[3] - bounds[1]
-        scale_x = qr_size / w
-        scale_y = qr_size / h
-        drawing = Drawing(qr_size, qr_size, transform=[scale_x, 0, 0, scale_y, 0, 0])
-        drawing.add(qr_code)
-        elementos.append(drawing)
-        elementos.append(Spacer(1, 6))
-
-    # Perguntas e respostas
-    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
-
-    linhas = [["#", "Pergunta", "Resposta"]]
-    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
-        linhas.append([f"{idx:02d}", p, r])
-
-    tabela_qa = Table(linhas, colWidths=[12*mm, None, 25*mm], repeatRows=1)
-    tabela_qa.setStyle(TableStyle([
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,0), 10),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,1), (-1,-1), 9),
-        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
-        ("LEFTPADDING", (0,0), (-1,-1), 4),
-        ("RIGHTPADDING", (0,0), (-1,-1), 4),
-        ("TOPPADDING", (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-    ]))
-    elementos.append(tabela_qa)
-    elementos.append(Spacer(1, 10))
-
-    # Assinaturas
-    elementos.append(Paragraph("Assinaturas", styles["SubTitulo"]))
-    assinatura_tbl = Table(
-        [["", ""], ["Assinatura do Supervisor", "Data"]],
-        colWidths=[120*mm, 35*mm]
-    )
-    assinatura_tbl.setStyle(TableStyle([
-        ("LINEABOVE", (0,0), (0,0), 0.8, colors.black),
-        ("LINEABOVE", (1,0), (1,0), 0.8, colors.black),
-        ("ALIGN", (0,1), (-1,1), "CENTER"),
-        ("FONTNAME", (0,1), (-1,1), "Helvetica"),
-        ("FONTSIZE", (0,1), (-1,1), 9),
-        ("TOPPADDING", (0,0), (-1,-1), 12),
-    ]))
-    elementos.append(assinatura_tbl)
-    elementos.append(Spacer(1, 8))
-
-    # Rodapé
-    elementos.append(Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"]))
-
-    doc.build(elementos)
-    buffer.seek(0)
-    return buffer
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
 with st.form("checklist_form"):
 
     respostas = []
-    
+
     for i, pergunta in enumerate(perguntas, start=1):
 
-        # Adiciona títulos sem alterar a lógica
+        # Títulos de seção
         if i == 1:
             st.subheader("AVALIAR")
         elif i == 4:
@@ -653,34 +728,34 @@ with st.form("checklist_form"):
             key=f"q{i}"
         )
         respostas.append(resposta)
-    
+
     st.divider()
-    
+
     confirmar_localizacao = st.checkbox(
         "Autorizo a captura da minha localização para envio do checklist"
     )
-    
+
     enviar = st.form_submit_button("Enviar Checklist")
-    
+
     # =====================
     # SALVAR NO GOOGLE SHEETS + GERAR PDF E DOWNLOAD
     # =====================
     if enviar:
-    
+
         # 🔒 Valida checkbox
         if not confirmar_localizacao:
             st.error("Você precisa autorizar a captura da localização para enviar.")
             st.stop()
-    
+
         # 🔒 Valida captura real da localização
-        if not localizacao:
-            st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador.")
+        if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
+            st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador e tente novamente.")
             st.stop()
-    
+
         latitude = localizacao["latitude"]
         longitude = localizacao["longitude"]
         precisao = localizacao["accuracy"]
-    
+
         if (
             regional == "Selecione"
             or coordenador == "Selecione"
@@ -689,9 +764,9 @@ with st.form("checklist_form"):
         ):
             st.error("Preencha todos os campos obrigatórios antes de enviar.")
             st.stop()
-    
+
         agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
-    
+
         linha = [
             agora,
             regional,
@@ -703,10 +778,13 @@ with st.form("checklist_form"):
             precisao,
             *respostas
         ]
-    
-        # Salva no Sheets
-        sheet.append_row(linha)
-    
+
+        # 🔐 Abre a planilha/aba só no envio (evita estourar cota de leitura)
+        ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
+        append_with_retry(ws, linha)
+
+        st.success("Checklist enviado com sucesso ✅")
+
         # ✅ Gera o PDF após salvar
         pdf_buffer = gerar_pdf_checklist(
             agora=agora,
@@ -722,8 +800,7 @@ with st.form("checklist_form"):
         )
         st.session_state["pdf_bytes"] = pdf_buffer.getvalue()
         nome_pdf = f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf"
-    
-        st.success("Checklist enviado com sucesso ✅")
+
         st.download_button(
             label="📄 Baixar PDF do checklist",
             data=st.session_state["pdf_bytes"],
@@ -731,7 +808,7 @@ with st.form("checklist_form"):
             mime="application/pdf"
         )
 
-# (Opcional) Exibe o botão fora do form no rerun
+# (Opcional) Exibe o botão fora do form no rerun (último envio)
 if "pdf_bytes" in st.session_state:
     st.download_button(
         label="📄 Baixar PDF do checklist (último envio)",
@@ -739,4 +816,3 @@ if "pdf_bytes" in st.session_state:
         file_name="checklist_ultimo_envio.pdf",
         mime="application/pdf"
     )
-
