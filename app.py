@@ -105,7 +105,7 @@ def append_with_retry(ws, row, retries: int = 4):
             raise
 
 # =====================
-# FUNÇÃO PARA GERAR PDF (com Resumo por Seção: Sim/Não/Total/% Sim)
+# FUNÇÃO PARA GERAR PDF (com Resumo por Seção e quebra correta das perguntas)
 # =====================
 
 def gerar_pdf_checklist(
@@ -119,47 +119,35 @@ def gerar_pdf_checklist(
     - Resumo geral (Sim/Não/Total/% Sim)
     - Resumo por Seção (Sim/Não/Total/% Sim)
     - Link do mapa (se houver localização)
-    - Tabela de perguntas/respostas
+    - Tabela de perguntas/respostas com quebra correta de linha
     Retorna um BytesIO pronto para download.
     """
     buffer = BytesIO()
 
+    # --- ReportLab imports locais para evitar conflitos no ambiente ---
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
 
-    # ---- Normalização das respostas para garantir contagem correta ----
-    # Mapeia tudo para minúsculas, sem espaços externos, e remove acentos básicos
-    import unicodedata
-
-    def normaliza(txt):
-        if txt is None:
-            return ""
-        s = str(txt).strip().lower()
-        s = "".join(
-            c for c in unicodedata.normalize("NFD", s)
-            if unicodedata.category(c) != "Mn"
-        )  # remove acentos
-        return s
-
-    respostas_norm = [normaliza(r) for r in respostas]
-
     # ---- Documento e estilos ----
+    left, right, top, bottom = 20*mm, 20*mm, 15*mm, 15*mm
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        leftMargin=20*mm,
-        rightMargin=20*mm,
-        topMargin=15*mm,
-        bottomMargin=15*mm
+        leftMargin=left,
+        rightMargin=right,
+        topMargin=top,
+        bottomMargin=bottom
     )
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
     styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4))
     styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+    # 👇 Estilo específico para perguntas (wrap e fonte um pouco menor)
+    styles.add(ParagraphStyle(name="Pergunta", fontName="Helvetica", fontSize=9, leading=11, spaceAfter=0, wordWrap="LTR"))
 
     elementos = []
 
@@ -179,7 +167,12 @@ def gerar_pdf_checklist(
         ["Longitude", f"{longitude:.6f}" if isinstance(longitude, (int, float)) else (str(longitude) if longitude is not None else "-")],
         ["Precisão (m)", f"{precisao:.0f}" if isinstance(precisao, (int, float)) else (str(precisao) if precisao is not None else "-")],
     ]
-    tabela_meta = Table(meta_data, colWidths=[40*mm, None], hAlign="LEFT")
+
+    # Largura útil da página (para calcular colunas depois também)
+    page_w, _ = A4
+    content_w = page_w - left - right
+
+    tabela_meta = Table(meta_data, colWidths=[40*mm, content_w - 40*mm], hAlign="LEFT")
     tabela_meta.setStyle(TableStyle([
         ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
         ("FONTSIZE", (0,0), (-1,-1), 10),
@@ -197,11 +190,24 @@ def gerar_pdf_checklist(
     elementos.append(Spacer(1, 6))
 
     # -------------------------------
+    # Normalização das respostas (garante contagem robusta)
+    # -------------------------------
+    import unicodedata
+    def normaliza(txt):
+        if txt is None:
+            return ""
+        s = str(txt).strip().lower()
+        s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+        return s
+
+    respostas_norm = [normaliza(r) for r in respostas]
+
+    # -------------------------------
     # Resumo geral
     # -------------------------------
     total_perguntas = len(perguntas)
     total_sim = sum(1 for r in respostas_norm if r == "sim")
-    total_nao = sum(1 for r in respostas_norm if r == "nao")  # 'não' normaliza para 'nao'
+    total_nao = sum(1 for r in respostas_norm if r == "nao")
     perc_sim = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
 
     elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
@@ -214,7 +220,6 @@ def gerar_pdf_checklist(
     # -------------------------------
     # Resumo por Seção
     # -------------------------------
-    # Índices 1-based para ficar alinhado com o enunciado
     secoes = [
         ("AVALIAR", 1, 3),
         ("TREINAR", 4, 8),
@@ -229,14 +234,21 @@ def gerar_pdf_checklist(
 
     linhas_sec = [["Seção", "Sim", "Não", "Total", "% Sim"]]
     for nome, ini, fim in secoes:
-        sub_rsps = respostas_norm[ini-1:fim]  # 0-based slice
+        sub_rsps = respostas_norm[ini-1:fim]  # slice 0-based
         tot = len(sub_rsps)
         sim = sum(1 for r in sub_rsps if r == "sim")
         nao = sum(1 for r in sub_rsps if r == "nao")
         pct = (sim / tot) * 100 if tot else 0.0
         linhas_sec.append([nome, f"{sim}", f"{nao}", f"{tot}", f"{pct:.1f}%"])
 
-    tabela_sec = Table(linhas_sec, colWidths=[None, 18*mm, 18*mm, 18*mm, 18*mm])
+    # Larguras para a tabela de resumo por seção
+    col_sec_sim = 18*mm
+    col_sec_nao = 18*mm
+    col_sec_tot = 18*mm
+    col_sec_pct = 18*mm
+    col_sec_nome = content_w - (col_sec_sim + col_sec_nao + col_sec_tot + col_sec_pct)
+
+    tabela_sec = Table(linhas_sec, colWidths=[col_sec_nome, col_sec_sim, col_sec_nao, col_sec_tot, col_sec_pct], hAlign="LEFT")
     tabela_sec.setStyle(TableStyle([
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
         ("FONTSIZE", (0,0), (-1,0), 10),
@@ -264,36 +276,59 @@ def gerar_pdf_checklist(
         elementos.append(Spacer(1, 6))
 
     # -------------------------------
-    # Perguntas e respostas
+    # Perguntas e respostas (com wrap)
     # -------------------------------
     elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
-    linhas = [["#", "Pergunta", "Resposta"]]
-    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
-        linhas.append([f"{idx:02d}", p, r])
 
-    tabela_qa = Table(linhas, colWidths=[12*mm, None, 25*mm], repeatRows=1)
+    # Calcular larguras das colunas com base na largura útil
+    num_w = 12*mm
+    resp_w = 25*mm
+    pergunta_w = content_w - (num_w + resp_w)
+
+    # Cabeçalho
+    linhas = [[Paragraph("#", styles["Normal10"]), Paragraph("Pergunta", styles["Normal10"]), Paragraph("Resposta", styles["Normal10"])]]
+
+    # Linhas com as perguntas como Paragraph (wrap automático)
+    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        p_par = Paragraph(p, styles["Pergunta"])  # 👈 isso faz o wrap
+        r_par = Paragraph(r, styles["Normal10"])
+        linhas.append([Paragraph(f"{idx:02d}", styles["Normal10"]), p_par, r_par])
+
+    tabela_qa = Table(
+        linhas,
+        colWidths=[num_w, pergunta_w, resp_w],
+        repeatRows=1,      # repete cabeçalho em cada página
+        splitByRow=1,      # permite quebrar linhas entre páginas
+        hAlign="LEFT"
+    )
+
     tabela_qa.setStyle(TableStyle([
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
         ("FONTSIZE", (0,0), (-1,0), 10),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("TEXTCOLOR", (0,0), (-1,0), colors.black),
+
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
         ("FONTSIZE", (0,1), (-1,-1), 9),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
+
         ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.white]),
         ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
         ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+
         ("LEFTPADDING", (0,0), (-1,-1), 4),
         ("RIGHTPADDING", (0,0), (-1,-1), 4),
         ("TOPPADDING", (0,0), (-1,-1), 3),
         ("BOTTOMPADDING", (0,0), (-1,-1), 3),
     ]))
+
     elementos.append(tabela_qa)
     elementos.append(Spacer(1, 8))
 
     # Rodapé
     elementos.append(Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"]))
 
+    # Build
     doc.build(elementos)
     buffer.seek(0)
     return buffer
