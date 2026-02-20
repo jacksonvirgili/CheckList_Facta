@@ -380,23 +380,27 @@ st.divider()
 # =====================
 localizacao = streamlit_js_eval(
     js_expressions="""
-    new Promise((resolve, reject) =&gt; {
+    new Promise((resolve) => {
+        if (!('geolocation' in navigator)) {
+            resolve(null);
+            return;
+        }
         navigator.geolocation.getCurrentPosition(
-            (pos) =&gt; resolve({
+            (pos) => resolve({
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,
                 accuracy: pos.coords.accuracy
             }),
-            (err) =&gt; resolve(null),
+            (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: 12000,
                 maximumAge: 0
             }
         );
     })
     """,
-    key="get_location_{datetime.now().timestamp()}"
+    key=f"get_location_{datetime.now().timestamp()}"
 )
 
 # =====================
