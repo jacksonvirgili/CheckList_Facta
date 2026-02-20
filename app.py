@@ -100,7 +100,7 @@ def append_with_retry(ws, row, retries: int = 4):
         except APIError as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
             if code in (429, 500, 503) and i < retries - 1:
-                time.sleep((2 ** i) + 0.2)
+                time.sleep((2 ** i) + 0.2)  # backoff exponencial simples
                 continue
             raise
 
@@ -454,10 +454,7 @@ hierarquia = {
                                   '7748 - LOJA ITAPUÃ - SALVADOR',
                                   '7900 - LOJA SALVADOR - BA',
                                   '71002 - LOJA SALVADOR - COMERCIO',
-                                  '7815 - LOJA SAO MARCOS - BA',
-                                  '93826 - LOJA ARACAJU - SE',
-                                  '23001 - LOJA MACEIO - AL',
-                                  '7764 - LOJA CAMACARI - BA'],
+                                  '7815 - LOJA SAO MARCOS - BA'],
         "RUANA VIRGINIA DA SILVA SANTOS": ['97913 - LOJA JUAZEIRO DO NORTE - CE',
                                            '97926 - LOJA QUIXADA - CE',
                                            '97928 - LOJA QUIXERAMOBIM - CE',
@@ -571,7 +568,7 @@ localizacao = streamlit_js_eval(
     key="get_location_once"
 )
 
-# (Atendendo seu pedido: REMOVIDO o botão "🔄 Capturar localização agora")
+# (Removido o botão "🔄 Capturar localização agora", conforme solicitado)
 
 # Mostra aviso se o navegador retornou erro
 if isinstance(localizacao, dict) and localizacao.get("error"):
@@ -746,7 +743,13 @@ with st.form("checklist_form"):
 # =====================
 if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
     with feedback_slot.container():
+        # Mensagem de sucesso primeiro
         st.success("Checklist enviado com sucesso ✅")
+
+        # Pequeno espaçamento visual
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
+        # Botão de download EMBAIXO da mensagem (no mesmo bloco visual)
         st.download_button(
             label="📄 Baixar PDF do checklist",
             data=st.session_state["pdf_bytes"],
@@ -754,10 +757,12 @@ if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
             mime="application/pdf",
             key="download_pdf_together"
         )
-    # Evita ficar repetindo a mensagem ao interagir nos widgets depois
+
+    # Evita repetir a mensagem em interações futuras
     st.session_state["just_submitted"] = False
+
 elif st.session_state.get("pdf_bytes"):
-    # Caso o usuário já tenha enviado antes, pode manter o botão disponível
+    # Caso o usuário já tenha enviado antes, manter apenas o botão do último envio (sem mensagem)
     with feedback_slot.container():
         st.download_button(
             label="📄 Baixar PDF do checklist (último envio)",
