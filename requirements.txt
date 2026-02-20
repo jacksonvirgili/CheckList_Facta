@@ -1,4 +1,7 @@
 streamlit
 gspread
+oauth2client
 google-auth
+google-auth-oauthlib
+reportlab
 streamlit-js-eval
