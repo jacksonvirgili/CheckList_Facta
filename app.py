@@ -444,13 +444,21 @@ with st.form("checklist_form"):
 
         # Adiciona títulos sem alterar a lógica
         if i == 1:
-            st.subheader("📌 ROTINA DIÁRIA")
-        elif i == 10:
-            st.subheader("📌 TÉCNICAS DA EQUIPE")
-        elif i == 20:
-            st.subheader("📌 GESTÃO E LIDERANÇA")
-        elif i == 30:
-            st.subheader("📌 PROCESSOS E ORGANIZAÇÃO")
+            st.subheader("AVALIAR")
+        elif i == 4:
+            st.subheader("TREINAR")
+        elif i == 9:
+            st.subheader("DOMÍNIO DE METODO POR PARTE DA EQUIPE")
+        elif i == 16:
+            st.subheader("INCENTIVAR")
+        elif i == 19:
+            st.subhearder("VERIFICAR")
+        elif i == 22:
+            st.subheader("ACOMPANHAR")
+        elif i == 26:
+            st.subheader("ACOMPANHAMENTO - OPERAÇÃO")
+        elif i == 37:
+            st.subheader("ACOMPANHAMENTO - ESTRUTURA")
 
         resposta = st.radio(
             pergunta,
