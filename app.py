@@ -452,7 +452,7 @@ with st.form("checklist_form"):
         elif i == 16:
             st.subheader("INCENTIVAR")
         elif i == 19:
-            st.subhearder("VERIFICAR")
+            st.subheader("VERIFICAR")
         elif i == 22:
             st.subheader("ACOMPANHAR")
         elif i == 26:
