@@ -572,13 +572,11 @@ localizacao = streamlit_js_eval(
     key="get_location_once"
 )
 
-# (Sem botão "Capturar localização agora")
-
 # Mostra aviso se o navegador retornou erro
 if isinstance(localizacao, dict) and localizacao.get("error"):
     st.warning(
-        "Não foi possível obter a geolocalização agora. "
-        "Tente novamente (melhor sinal de GPS/Wi‑Fi) ou recarregue a página.\n\n"
+        "Não foi possível obter a localização necessária. "
+        "Antes de iniciar o preenchimento, habilite permissões de localização para este site. \n\n"
         f"Detalhe técnico: {localizacao.get('message', 'sem detalhes')}"
     )
 
