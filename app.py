@@ -116,7 +116,8 @@ def gerar_pdf_checklist(
     """
     Gera um PDF em memória com:
     - Identificação
-    - Resumo geral (% de 'Sim')
+    - Resumo geral
+    - Resumo por Seção (Sim/Não/Total/% Sim)
     - Link do mapa (se houver localização)
     - Tabela de perguntas/respostas
     Retorna um BytesIO pronto para download.
@@ -173,12 +174,59 @@ def gerar_pdf_checklist(
     # Resumo geral
     total_perguntas = len(perguntas)
     total_sim = sum(1 for r in respostas if r == "Sim")
-    perc = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
-    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
-    elementos.append(Paragraph(f"Respostas 'Sim': {total_sim}/{total_perguntas} ({perc:.1f}%)", styles["Normal10"]))
-    elementos.append(Spacer(1, 4))
+    total_nao = sum(1 for r in respostas if r == "Não")
+    perc_sim = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
 
-    # Link do mapa
+    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
+    elementos.append(Paragraph(
+        f"Sim: {total_sim} | Não: {total_nao} | Total: {total_perguntas} | % Sim: {perc_sim:.1f}%",
+        styles["Normal10"]
+    ))
+    elementos.append(Spacer(1, 6))
+
+    # Resumo por Seção (usando os mesmos intervalos do seu formulário)
+    secoes = [
+        ("AVALIAR", 1, 3),
+        ("TREINAR", 4, 8),
+        ("DOMÍNIO DE METODO POR PARTE DA EQUIPE", 9, 15),
+        ("INCENTIVAR", 16, 18),
+        ("VERIFICAR", 19, 21),
+        ("ACOMPANHAR", 22, 25),
+        ("ACOMPANHAMENTO - OPERAÇÃO", 26, 36),
+        ("ACOMPANHAMENTO - ESTRUTURA", 37, 37),
+    ]
+    elementos.append(Paragraph("Resumo por Seção", styles["SubTitulo"]))
+
+    linhas_sec = [["Seção", "Sim", "Não", "Total", "% Sim"]]
+    for nome, ini, fim in secoes:
+        # Ajuste para índices 0-based
+        sub_rsps = respostas[ini-1:fim]
+        tot = len(sub_rsps)
+        sim = sum(1 for r in sub_rsps if r == "Sim")
+        nao = sum(1 for r in sub_rsps if r == "Não")
+        pct = (sim / tot) * 100 if tot else 0.0
+        linhas_sec.append([nome, f"{sim}", f"{nao}", f"{tot}", f"{pct:.1f}%"])
+
+    tabela_sec = Table(linhas_sec, colWidths=[None, 18*mm, 18*mm, 18*mm, 18*mm])
+    tabela_sec.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 10),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_sec)
+    elementos.append(Spacer(1, 6))
+
+    # Link do mapa (se houver localização)
     if (latitude is not None) and (longitude is not None):
         url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
         elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
