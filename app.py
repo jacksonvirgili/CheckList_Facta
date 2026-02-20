@@ -227,291 +227,12 @@ def gerar_pdf_checklist(
 st.title("Check-list de Acompanhamento")
 st.subheader("Identificação")
 
-# Placeholder para mostrar mensagem de sucesso + download juntos (fora do form)
-feedback_slot = st.empty()
-
+# =====================
+# HIERARQUIA
+# =====================
+# COLE AQUI O SEU DICIONÁRIO 'hierarquia' COMPLETO, EXATAMENTE COMO ESTÁ HOJE
 hierarquia = {
-    "ADRIELE DA SILVA SOUZA": {
-        "ANA PICOLLI": ['2222 - LOJA BALNEARIO CAMBORIU - SC',
-                        '2913 - LOJA CHAPECO - SC',
-                        '2802 - LOJA FLORIANOPOLIS - SC',
-                        '200022 - LOJA ITAJAI - SC',
-                        '20959 - LOJA JOINVILLE - SC',
-                        '2918 - LOJA PALHOÇA - SC',
-                        '2945 - LOJA SAO JOSE - SC'],
-        "DANIELA DO CARMO CAMPARA": ['10331 - LOJA ERECHIM - RS',
-                                     '10332 - LOJA CARAZINHO - RS',
-                                     '19715 - LOJA CRUZ ALTA - RS',
-                                     '19777 - LOJA PASSO FUNDO - RS',
-                                     '10333 - LOJA PASSO FUNDO 2 - RS',
-                                     '19890 - LOJA SOLEDADE - RS',
-                                     '1407 - LOJA CACHOEIRA DO SUL - RS',
-                                     '1449 - LOJA SANTA MARIA - RS',
-                                     '19701 - LOJA LAJEADO - RS',
-                                     '19705 - LOJA VENANCIO AIRES - RS'],
-        "FABIOLA DAL ROSSO": ['1423 - LOJA IJUI 1 - RS',
-                              '10650 - LOJA SANTA ROSA - RS',
-                              '19709 - LOJA SANTO ÂNGELO - RS',
-                              '10201 - LOJA ALEGRETE - RS',
-                              '10600 - LOJA ITAQUI - RS',
-                              '19710 - LOJA ROSARIO DO SUL - RS',
-                              '10604 - LOJA SANTIAGO  - RS',
-                              '10897 - LOJA SAO BORJA - RS',
-                              '10330 - LOJA SÃO GABRIEL - RS',
-                              '1485 - LOJA URUGUAIANA - RS'],
-        "JOSIANE DE SOUZA MONTEIRO DOS SANTOS": ['1487 - LOJA CAMPO BOM - RS',
-                                                 '1416 - LOJA IGREJINHA - RS',
-                                                 '1500 - LOJA PORTO ALEGRE - ASSIS BRASIL - RS',
-                                                 '19778 - LOJA PORTO ALEGRE - VIGARIO - RS',
-                                                 '1424 - LOJA ROLANTE - RS',
-                                                 '1427 - LOJA SANTO ANTONIO DA PATRULHA - RS',
-                                                 '1403 - LOJA SAPIRANGA - RS',
-                                                 '1420 - LOJA TAQUARA - RS',
-                                                 '1496 - LOJA TRAMANDAI - RS',
-                                                 '19714 - LOJA TRES COROAS - RS',
-                                                 '1434 - LOJA CACHOEIRINHA - RS'],
-        "JULIE BARBOSA": ['20990 - LOJA ARARANGUA -  SC',
-                          '20987 - LOJA CRICIUMA - SC',
-                          '2921 - LOJA LAGUNA - SC',
-                          '20989 - LOJA TUBARÃO - SC',
-                          '1497 - LOJA TORRES - RS'],
-        "LARISSA OLIVEIRA BARBOZA": ['1435 - LOJA BUTIA - RS',
-                                     '19901 - LOJA CHARQUEADAS - RS',
-                                     '1432 - LOJA GRAVATAI - RS',
-                                     '1409 - LOJA PORTO ALEGRE - AZENHA - RS',
-                                     '1400 - LOJA PORTO ALEGRE - BORGES - RS',
-                                     '1401 - LOJA PORTO ALEGRE - OSVALDO ARANHA I - RS',
-                                     '10226 - LOJA SALGADO FILHO - RS',
-                                     '1444 - LOJA SAO JERONIMO - RS',
-                                     '1414 - LOJA VIAMAO - RS',
-                                     '1525 - LOJA PORTO ALEGRE - OTTO NIEMEYER - RS',
-                                     '1404 - LOJA PORTO ALEGRE - RESTINGA - RS'],
-        "THAMIRES IZIDORO DO NASCIMENTO SILVA": ['1402 - LOJA CANOAS - CENTRO - RS',
-                                                 '1458 - LOJA CANOAS - GUAJUVIRAS - RS',
-                                                 '1421 - LOJA ESTEIO - RS',
-                                                 '1476 - LOJA NOVO HAMBURGO - RS',
-                                                 '10678 - LOJA NOVO HAMBURGO 2 - RS',
-                                                 '10627 - LOJA SAO LEOPOLDO II - RS',
-                                                 '1418 - LOJA SAPUCAIA DO SUL I - RS',
-                                                 '1419 - LOJA SAPUCAIA DO SUL II - RS',
-                                                 '1453 - LOJA BENTO GONCALVES - RS',
-                                                 '1443 - LOJA CAXIAS DO SUL - RS',
-                                                 '1437 - LOJA MONTENEGRO - RS',
-                                                 '1439 - LOJA PORTAO - RS'],
-        "VIVIANE FAGUNDES DE MELLO": ['1417 - LOJA SAO LEOPOLDO - RS',
-                                      '1405 - LOJA GUAIBA - RS',
-                                      '601055 - LOJA PORTO ALEGRE - CRISTOVAO COLOMBO - RS',
-                                      '601057 - LOJA PROTASIO ALVES - RS',
-                                      '1436 - LOJA CAMAQUA - RS',
-                                      '1478 - LOJA PELOTAS - RS',
-                                      '10200 - LOJA RIO GRANDE - RS',
-                                      '1490 - LOJA SAO LOURENÇO - RS',
-                                      '1422 - LOJA TAPES - RS',
-                                      '94390 - LOJA PORTO ALEGRE - MARECHAL - RS']
-    },
-
-    "MAYARA NOVAIS LOPES": {
-        "ADRIELE FERNANDA VIEIRA DA SILVA": ['15002 - LOJA GOIANIA - GO',
-                                             '17207 - LOJA SETOR CAMPINAS - GO',
-                                             '15361 - LOJA SETOR GARAVELO - GO',
-                                             '12200 - LOJA CAMPO GRANDE - MS',
-                                             '19201 - LOJA CUIABA - MT',
-                                             '24009 - LOJA PALMAS - TO'],
-        "ROSELY RAMALHO DA SILVA DIAS": ['96330 - LOJA MANAUS - ALVORADA - AM',
-                                         '96329 - LOJA MANAUS - CHAPADA - AM',
-                                         '96331 - LOJA MANAUS - CIDADE NOVA - AM',
-                                         '96714 - LOJA MANAUS - COMPENSA - AM',
-                                         '96328 - LOJA MANAUS - EDUCANDOS - AM',
-                                         '96713 - LOJA MANAUS - SAO JOSE OPERARIO - AM '],
-        "JESSICA FERREIRA FIGUEIREDO": ['40325 - LOJA  JUIZ DE FORA - MG',
-                                        '400013 - LOJA CATAGUASES - MG',
-                                        '40324 - LOJA CONSELHEIRO LAFAIETE-MG',
-                                        '400012 - LOJA MURIAE - MG',
-                                        '400010 - LOJA SANTOS DUMONT - MG',
-                                        '92760 - LOJA UBA - MG',
-                                        '400011 - LOJA VIÇOSA - MG',
-                                        '7761 - LOJA SAO JOAO DEL REI - MG',
-                                        '7765 - LOJA BARBACENA - MG'],
-        "LUCIANE DA SILVA FONSECA PINHEIRO": ['13976 - LOJA ANJO DA GUARDA - MA',
-                                              '12257 - LOJA JOAO PAULO - MA',
-                                              '31381 - LOJA PAÇO DO LUMIAR - MA',
-                                              '31388 - LOJA SAO JOSE DE RIBAMAR - MA',
-                                              '13900 - LOJA SAO LUIS - MA',
-                                              '20085 - LOJA TERESINA II - PI',
-                                              '31382 - LOJA TIRIRICAL - MA',
-                                              '13977 - LOJA BACABAL - MA'],
-        "NAYRA BASTOS DA SILVA": ['180007 - LOJA ANANINDEUA - PA',
-                                  '17500 - LOJA BELEM - PA',
-                                  '600098 - LOJA BRAGANÇA - PA',
-                                  '17514 - LOJA ICOARACI - PA',
-                                  '22001 - LOJA MACAPA - AP'],
-        "RENATO SOUZA DO ESPIRITO SANTO LANGA": ['4900 - LOJA BELO HORIZONTE - MG',
-                                                 '45034 - LOJA CONTAGEM - MG',
-                                                 '45018 - LOJA SANTA LUZIA - MG',
-                                                 '7754 - LOJA BETIM - MG',
-                                                 '7759 - LOJA BELO HORIZONTE - BARRO PRETO - MG',
-                                                 '7755 - LOJA BELO HORIZONTE - BETANIA - MG',
-                                                 '7757 - LOJA BELO HORIZONTE - VENDA NOVA - MG'],
-        "KAICK FERNANDES PEIXOTO": ['25018 - LOJA JARU - RO',
-                                    '25017 - LOJA JI PARANA - RO',
-                                    '25021 - LOJA ARIQUEMES - RO',
-                                    '25020 - LOJA VILHENA - RO',
-                                    '25019 - LOJA PORTO VELHO - RO'],
-        "SILVANA PINTO CABRAL": ['600099 - LOJA MARABÁ - PA',
-                                 '13980 - LOJA DE AÇAILÂNDIA - MA',
-                                 '13978 - LOJA DE IMPERATRIZ - MA',
-                                 '24040 - LOJA ARAGUAINA - TO',
-                                 '13979 - LOJA BARRA DO CORDA - MA',
-                                 '13981 - LOJA BALSAS - MA']
-    },
-
-    "CINARA REGINA KEMERICH": {
-        "ANDREY COSTA DA ROCHA": ['50809 - LOJA ARARAQUARA - SP',
-                                  '53556 - LOJA BAURU - SP',
-                                  '54464 - LOJA JAU - SP',
-                                  '54466 - LOJA MARILIA - SP',
-                                  '54471 - LOJA OURINHOS - SP',
-                                  '50499 - LOJA RIBEIRAO PRETO - SP',
-                                  '50590 - LOJA SAO JOSE DO RIO PRETO - SP'],
-        "THAINA MARCHI CONEJO": ['5502 - LOJA CAMPINAS - SP',
-                                 '54465 - LOJA LIMEIRA - SP',
-                                 '54444 - LOJA PIRACICABA - SP',
-                                 '54467 - LOJA RIO CLARO - SP',
-                                 '54468 - LOJA SÃO CARLOS - SP',
-                                 '50850 - LOJA SUMARE - SP',
-                                 '6000034 - LOJA VALINHOS - SP'],
-        "JOAO GUALBERTO BRAZ JUNIOR": ['31174 - LOJA ALMIRANTE TAMANDARÉ - PR',
-                                       '3802 - LOJA CURITIBA - PR',
-                                       '3801 - LOJA FAZENDA RIO GRANDE - PR',
-                                       '30110 - LOJA PARANAGUA - PR',
-                                       '31220 - LOJA PONTA GROSSA - PR',
-                                       '31175 - LOJA SAO JOSÉ DOS PINHAIS',
-                                       '31423 - LOJA ARAUCARIA - PR',
-                                       '31425 - LOJA CAMPO LARGO - PR',
-                                       '31424 - LOJA COLOMBO - PR',
-                                       '31422 - LOJA PINHAIS - PR'],
-        "COORDENAÇÃO SP II": ['6000038 - LOJA ATIBAIA - SP',
-                              '6000045 - LOJA FRANCISCO MORATO - SP',
-                              '600079 - LOJA FRANCO DA ROCHA - SP',
-                              '54512 - LOJA JUNDIAI - SP',
-                              '50550 - LOJA OSASCO - SP',
-                              '6000033 - LOJA SAO ROQUE - SP'],
-        "MIRIAM DE SALLES BARBIERI": ['600064 - LOJA SUZANO SP',
-                                      '5504 - LOJA ITAQUAQUECETUBA - SP',
-                                      '5501 - LOJA ITAQUERA - SP',
-                                      '6000036 - LOJA MATEUS - SP',
-                                      '6000040 - LOJA SAO MIGUEL - SP',
-                                      '5506 - LOJA SAO PAULO - PENHA - SP',
-                                      '600081 - LOJA TATUAPE - SP',
-                                      '50734 - LOJA GUARULHOS - SP',
-                                      '52012 - LOJA SAO BENTO - SP'],
-        "SILVANA DE FATIMA CENCI": ['600076 - LOJA DIADEMA - SP',
-                                    '600075 - LOJA MAUA - SP',
-                                    '600080 - LOJA MOGI DAS CRUZES - SP',
-                                    '5503 - LOJA PRAIA GRANDE - SP',
-                                    '600077 - LOJA SANTO ANDRE - SP',
-                                    '50731 - LOJA SANTOS - SP',
-                                    '600078 - LOJA SAO CAETANO - SP',
-                                    '50400 - LOJA SAO VICENTE - SP'],
-        "CARLOS VINICIUS TEIXEIRA FRANCA": ['31373 - LOJA CAMPO MOURÃO - PR',
-                                            '31276 - LOJA CASCAVEL - PR',
-                                            '31226 - LOJA FOZ DO IGUAÇU - PR',
-                                            '3817 - LOJA LONDRINA - PR',
-                                            '3800 - LOJA MARINGA 1 - PR',
-                                            '3827 - LOJA MARINGA 2 - PR',
-                                            '31353 - LOJA TOLEDO - PR',
-                                            '200020 - LOJA UMUARAMA - PR']
-    },
-
-    "CRISTIANE CARVALHO GEBELATTO": {
-        "BRENO ROCHA HONORATO DA SILVA": ['9366 - LOJA CONJ CEARA - FORTALEZA - CE',
-                                          '90900 - LOJA FORTALEZA - CE',
-                                          '9370 - LOJA MESSEJANA - CE',
-                                          '9368 - LOJA PARANGABA - CE',
-                                          '97538 - LOJA MARACANAU - CE',
-                                          '97616 - LOJA MARANGUAPE - CE',
-                                          '97521 - LOJA CAUCAIA - CE',
-                                          '97964 - LOJA ITAPIPOCA - CE',
-                                          '97927 - LOJA SOBRAL - CE',
-                                          '27894 - LOJA GUAIUBA - CE'],
-        "JESSICA ANDRADE DOS SANTOS": ['94438 - LOJA LAURO DE FREITAS - BA',
-                                       '7763 - LOJA CANDEIAS - BA',
-                                       '7758 - LOJA FEIRA DE SANTANA - BA',
-                                       '7756 - LOJA SANTO ANTONIO DE JESUS - BA',
-                                       '7760 - LOJA VALENCA - BA',
-                                       '7768 - LOJA DIAS DAVILA - BA'],
-        "JOSE WELLINGTON DE SOUSA COSTA": ['49001 - LOJA ALMENARA - MG',
-                                           '7752 - LOJA EUNAPOLIS - BA',
-                                           '7751 - LOJA ILHEUS - BA',
-                                           '7749 - LOJA ITABUNA - BA',
-                                           '7750 - LOJA PORTO SEGURO - BA',
-                                           '7753 - LOJA VITORIA DA CONQUISTA - BA',
-                                           '7767 - LOJA DIVISOPOLIS - MG',
-                                           '7769 - LOJA PEDRA AZUL - MG',
-                                           '7770 - LOJA JEQUIE - BA'],
-        "LUANA SANTOS FURMANEK": ['7747 - LOJA CABULA - SALVADOR',
-                                  '7800 - LOJA CAJAZEIRAS -  BA',
-                                  '7748 - LOJA ITAPUÃ - SALVADOR',
-                                  '7900 - LOJA SALVADOR - BA',
-                                  '71002 - LOJA SALVADOR - COMERCIO',
-                                  '7815 - LOJA SAO MARCOS - BA'],
-        "RUANA VIRGINIA DA SILVA SANTOS": ['97913 - LOJA JUAZEIRO DO NORTE - CE',
-                                           '97926 - LOJA QUIXADA - CE',
-                                           '97928 - LOJA QUIXERAMOBIM - CE',
-                                           '98014 - LOJA CRATO - CE',
-                                           '98970 - LOJA IGUATU - CE'],
-        "WHANDERSON MATHEUS ARAUJO DA COSTA": ['81006 - LOJA AFOGADOS - RECIFE',
-                                               '18936 - LOJA BAYEUX - PB',
-                                               '18105 - LOJA CAMPINA GRANDE - PB',
-                                               '80969 - LOJA CARUARU - PE',
-                                               '81075 - LOJA CRUZ DAS ARMAS - PB',
-                                               '18900 - LOJA JOAO PESSOA - PB',
-                                               '18937 - LOJA MANGABEIRA - PB',
-                                               '14900 - LOJA NATAL - RN',
-                                               '14932 - LOJA NATAL - CIDADE ALTA - RN',
-                                               '8399 - LOJA RECIFE - PE',
-                                               '96715 - LOJA SANTA RITA - PB']
-    },
-
-    "THAYSA SANDIM DE SOUZA": {
-        "GISELLE MORAES SCHNEIDER": ['11303 - LOJA CARIACICA - ES',
-                                     '11304 - LOJA GUARAPARI - ES',
-                                     '9362 - LOJA LINHARES - ES',
-                                     '9360 - LOJA SERRA - ES',
-                                     '11950 - LOJA VILA VELHA - ES',
-                                     '11900 - LOJA VITORIA - ES',
-                                     '11962 - LOJA CACHOEIRO DE ITAPEMIRIM - ES',
-                                     '11963 - LOJA LARANJEIRAS - ES'],
-        "LOSANGELA HONORIO DE OLIVEIRA": ['6000031 - LOJA ANGRA DOS REIS - RJ',
-                                          '61019 - LOJA BARRA DO PIRAI - RJ',
-                                          '60495 - LOJA BARRA MANSA - RJ',
-                                          '600046 - LOJA CRUZEIRO - SP',
-                                          '600056 - LOJA GUARATINGUETA - SP',
-                                          '600047 - LOJA LORENA - SP',
-                                          '60498 - LOJA RESENDE - RJ',
-                                          '50733 - LOJA SAO JOSE DOS CAMPOS - SP',
-                                          '600057 - LOJA TAUBATE - SP',
-                                          '60007 - LOJA VOLTA REDONDA - RJ',
-                                          '60494 - LOJA VOLTA REDONDA II - RJ',
-                                          '61050 - LOJA TRES RIOS - RJ'],
-        "MARILIA GABRIELA LOPES FARIA": ['60099 - LOJA BANGU - RJ',
-                                         '61045 - LOJA CAMPO GRANDE - RJ',
-                                         '60501 - LOJA MADUREIRA - RJ',
-                                         '60502 - LOJA MEIER - RJ'],
-        "MARIA EDUARDA DELGADO MENESES": ['60503 - LOJA DUQUE DE CAXIAS - RJ',
-                                          '60500 - LOJA NITEROI - RJ',
-                                          '60507 - LOJA NOVA IGUAÇU - RJ',
-                                          '60900 - LOJA RIO DE JANEIRO - RJ',
-                                          '61049 - LOJA SAO GONCALO - RJ',
-                                          '61057 - LOJA ITABORAI - RJ'],
-        "YASMIM APARECIDA DOS ANJOS PARANHOS": ['61056 - LOJA MACAE - RJ',
-                                                '61054 - LOJA RIO DAS OSTRAS - RJ',
-                                                '61055 - LOJA SAQUAREMA - RJ',
-                                                '61053 - LOJA CABO FRIO - RJ',
-                                                '61052 - LOJA CAMPO DOS GOYTACAZES 1 - RJ',
-                                                '61051 - LOJA ARARUAMA - RJ',
-                                                '61058 - LOJA SAO PEDRO DA ALDEIA - RJ']
-    }
+    # ---------- COLE SEU DICIONÁRIO COMPLETO AQUI ----------
 }
 
 # ===== SELECTS FORA DO FORM =====
@@ -568,7 +289,7 @@ localizacao = streamlit_js_eval(
     key="get_location_once"
 )
 
-# (Removido o botão "🔄 Capturar localização agora", conforme solicitado)
+# (Sem botão "Capturar localização agora")
 
 # Mostra aviso se o navegador retornou erro
 if isinstance(localizacao, dict) and localizacao.get("error"):
@@ -739,37 +460,28 @@ with st.form("checklist_form"):
             st.session_state["just_submitted"] = False
 
 # =====================
-# FEEDBACK (SUCESSO + DOWNLOAD) FORA DO FORM
+# FEEDBACK (SUCESSO + DOWNLOAD) FORA DO FORM — LOGO ABAIXO DO SUBMIT
 # =====================
 if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
-    with feedback_slot.container():
-        # Mensagem de sucesso primeiro
-        st.success("Checklist enviado com sucesso ✅")
-
-        # Pequeno espaçamento visual
-        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-
-        # Botão de download EMBAIXO da mensagem (no mesmo bloco visual)
-        st.download_button(
-            label="📄 Baixar PDF do checklist",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
-            mime="application/pdf",
-            key="download_pdf_together"
-        )
-
+    # Colocando o feedback *depois* do bloco do form garante que apareça abaixo do submit
+    st.success("Checklist enviado com sucesso ✅")
+    # Espaçamento para destacar o botão
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    st.download_button(
+        label="📄 Baixar PDF do checklist",
+        data=st.session_state["pdf_bytes"],
+        file_name=st.session_state.get("pdf_name", "checklist.pdf"),
+        mime="application/pdf",
+        key="download_pdf_together"
+    )
     # Evita repetir a mensagem em interações futuras
     st.session_state["just_submitted"] = False
-
 elif st.session_state.get("pdf_bytes"):
-    # Caso o usuário já tenha enviado antes, manter apenas o botão do último envio (sem mensagem)
-    with feedback_slot.container():
-        st.download_button(
-            label="📄 Baixar PDF do checklist (último envio)",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
-            mime="application/pdf",
-            key="download_pdf_last"
-        )
-else:
-    feedback_slot.empty()
+    # Opcional: manter um botão de último envio (sem mensagem)
+    st.download_button(
+        label="📄 Baixar PDF do checklist (último envio)",
+        data=st.session_state["pdf_bytes"],
+        file_name=st.session_state.get("pdf_name", "checklist.pdf"),
+        mime="application/pdf",
+        key="download_pdf_last"
+    )
