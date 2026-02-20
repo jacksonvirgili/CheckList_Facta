@@ -215,7 +215,7 @@ def gerar_pdf_checklist(
 
     elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
     elementos.append(Paragraph(
-        f"Sim: {total_sim}  |  Não: {total_nao}  |  Total: {total_perguntas}  |  % Sim: {perc_sim:.1f}%",
+        f"Sim: {total_sim}  |  Não: {total_nao}  |  Total: {total_perguntas}  |  Sim: {perc_sim:.1f}%",
         styles["Normal10"]
     ))
     elementos.append(Spacer(1, 6))
