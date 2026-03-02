@@ -26,6 +26,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
+st.set_page_config(page_title="CheckList Gerencial Facta")
+
 # =====================
 # CONFIGURAÇÕES
 # =====================
