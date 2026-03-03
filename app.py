@@ -736,8 +736,7 @@ perguntas = [
     "33. O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?",
     "34. Supervisor faz a gestão e controle das horas extras diariamente?",
     "35. A equipe mantém assiduidade em loja (pontualidade e frequência).",
-    "36. Supervisor faz a gestão e controle das horas extras diariamente?",
-    "37. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
+    "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
 ]
 
 with st.form("checklist_form"):
