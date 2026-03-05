@@ -347,7 +347,6 @@ st.subheader("Identificação")
 # =====================
 # COLE AQUI O SEU DICIONÁRIO 'hierarquia' COMPLETO, EXATAMENTE COMO ESTÁ HOJE
 hierarquia = {
-
     "MAYARA NOVAIS LOPES": {
         "ADRIELE FERNANDA VIEIRA DA SILVA": [
             "15002 - LOJA GOIANIA - GO",
@@ -357,48 +356,18 @@ hierarquia = {
             "19201 - LOJA CUIABA - MT",
             "24009 - LOJA PALMAS - TO",
         ],
-        "ROSELY RAMALHO DA SILVA DIAS": [
-            "96330 - LOJA MANAUS - ALVORADA - AM",
-            "96329 - LOJA MANAUS - CHAPADA - AM",
-            "96331 - LOJA MANAUS - CIDADE NOVA - AM",
-            "96714 - LOJA MANAUS - COMPENSA - AM",
-            "96328 - LOJA MANAUS - EDUCANDOS - AM",
-            "96713 - LOJA MANAUS - SAO JOSE OPERARIO - AM",
-        ],
-        "NAYRA BASTOS DA SILVA": [
-            "180007 - LOJA ANANINDEUA - PA",
-            "17500 - LOJA BELEM - PA",
-            "600098 - LOJA BRAGANCA - PA",
-            "17514 - LOJA ICOARACI - PA",
-            "22001 - LOJA MACAPA - AP",
-        ],
-        "KAICK FERNANDES PEIXOTO": [
-            "25018 - LOJA JARU - RO",
-            "25017 - LOJA JI PARANA - RO",
-            "25021 - LOJA ARIQUEMES - RO",
-            "25020 - LOJA VILHENA - RO",
-            "25019 - LOJA PORTO VELHO - RO",
-        ],
-        "SILVANA PINTO CABRAL": [
-            "600099 - LOJA MARABA - PA",
-            "13980 - LOJA ACAILANDIA - MA",
-            "13978 - LOJA IMPERATRIZ - MA",
-            "24040 - LOJA ARAGUAINA - TO",
-            "13979 - LOJA BARRA DO CORDA - MA",
-            "13981 - LOJA BALSAS - MA",
-        ],
         "THAINA MARCHI CONEJO": [
             "50550 - LOJA OSASCO - SP",
             "6000038 - LOJA ATIBAIA - SP",
             "54512 - LOJA JUNDIAI - SP",
+            "6000034 - LOJA VALINHOS - SP",
             "600079 - LOJA FRANCO DA ROCHA - SP",
             "54465 - LOJA LIMEIRA - SP",
-            "54467 - LOJA RIO CLARO - SP",
-            "54444 - LOJA PIRACICABA - SP",
             "5502 - LOJA CAMPINAS - SP",
             "50850 - LOJA SUMARE - SP",
+            "54467 - LOJA RIO CLARO - SP",
+            "54444 - LOJA PIRACICABA - SP",
             "6000045 - LOJA FRANCISCO MORATO - SP",
-            "6000034 - LOJA VALINHOS - SP",
         ],
         "SILVANA DE FATIMA CENCI": [
             "600080 - LOJA MOGI DAS CRUZES - SP",
@@ -407,23 +376,21 @@ hierarquia = {
             "52012 - LOJA SAO BENTO - SP",
             "600075 - LOJA MAUA - SP",
             "600078 - LOJA SAO CAETANO - SP",
-            "50400 - LOJA SAO VICENTE - SP",
             "600077 - LOJA SANTO ANDRE - SP",
             "50731 - LOJA SANTOS - SP",
             "5503 - LOJA PRAIA GRANDE - SP",
-            "600085 - LOJA GUARUJA - SP",
+            "50400 - LOJA SAO VICENTE - SP",
+        ],
+        "NAYRA BASTOS DA SILVA": [
+            "180007 - LOJA ANANINDEUA - PA",
+            "17500 - LOJA BELEM - PA",
+            "600098 - LOJA BRAGANCA - PA",
+            "17514 - LOJA ICOARACI - PA",
+            "22001 - LOJA MACAPA - AP",
         ],
     },
 
     "CINARA REGINA KEMERICH": {
-        "JULIE BARBOSA": [
-            "20990 - LOJA ARARANGUA - SC",
-            "20987 - LOJA CRICIUMA - SC",
-            "2921 - LOJA LAGUNA - SC",
-            "20989 - LOJA TUBARAO - SC",
-            "1497 - LOJA TORRES - RS",
-            "200025 - LOJA IMBITUBA - SC",
-        ],
         "ANA PICOLLI": [
             "2222 - LOJA BALNEARIO CAMBORIU - SC",
             "2913 - LOJA CHAPECO - SC",
@@ -432,6 +399,13 @@ hierarquia = {
             "20959 - LOJA JOINVILLE - SC",
             "2918 - LOJA PALHOCA - SC",
             "2945 - LOJA SAO JOSE - SC",
+        ],
+        "JULIE BARBOSA": [
+            "20990 - LOJA ARARANGUA - SC",
+            "20987 - LOJA CRICIUMA - SC",
+            "2921 - LOJA LAGUNA - SC",
+            "20989 - LOJA TUBARAO - SC",
+            "1497 - LOJA TORRES - RS",
         ],
         "ANDREY COSTA DA ROCHA": [
             "54466 - LOJA MARILIA - SP",
@@ -442,18 +416,6 @@ hierarquia = {
             "50499 - LOJA RIBEIRAO PRETO - SP",
             "50809 - LOJA ARARAQUARA - SP",
             "53556 - LOJA BAURU - SP",
-        ],
-        "MIRIAM DE SALLES BARBIERI": [
-            "6000033 - LOJA SAO ROQUE - SP",
-            "6000036 - LOJA SAO MATEUS - SP",
-            "600064 - LOJA SUZANO - SP",
-            "50733 - LOJA SAO JOSE DOS CAMPOS - SP",
-            "600057 - LOJA TAUBATE - SP",
-            "5501 - LOJA SAO PAULO - ITAQUERA - SP",
-            "50734 - LOJA GUARULHOS - SP",
-            "5504 - LOJA ITAQUAQUECETUBA - SP",
-            "6000040 - LOJA SAO MIGUEL - SP",
-            "5506 - LOJA SAO PAULO - PENHA - SP",
         ],
         "JOAO GUALBERTO BRAZ JUNIOR": [
             "31174 - LOJA ALMIRANTE TAMANDARE - PR",
@@ -528,7 +490,6 @@ hierarquia = {
             "1444 - LOJA SAO JERONIMO - RS",
             "1414 - LOJA VIAMAO - RS",
             "1525 - LOJA PORTO ALEGRE - OTTO NIEMEYER - RS",
-            "1404 - LOJA PORTO ALEGRE - RESTINGA - RS",
         ],
         "THAMIRES IZIDORO DO NASCIMENTO SILVA": [
             "1402 - LOJA CANOAS - CENTRO - RS",
@@ -552,12 +513,11 @@ hierarquia = {
             "1436 - LOJA CAMAQUA - RS",
             "1478 - LOJA PELOTAS - RS",
             "10200 - LOJA RIO GRANDE - RS",
-            "1490 - LOJA SAO LOURENCO - RS",
+            "1490 - LOJA SAO LOURENÇO - RS",
             "1422 - LOJA TAPES - RS",
             "94390 - LOJA PORTO ALEGRE - MARECHAL - RS",
         ],
-    },
-
+    }
 }
 
 # ===== SELECTS FORA DO FORM =====
