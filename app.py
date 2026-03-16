@@ -541,6 +541,7 @@ hierarquia = {
             "1444 - LOJA SAO JERONIMO - RS",
             "1414 - LOJA VIAMAO - RS",
             "1525 - LOJA PORTO ALEGRE - OTTO NIEMEYER - RS",
+            "1404 - LOJA PORTO ALEGRE - RESTINGA - RS",
         ],
         "THAMIRES IZIDORO DO NASCIMENTO SILVA": [
             "1402 - LOJA CANOAS - CENTRO - RS",
