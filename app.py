@@ -634,6 +634,77 @@ hierarquia = {
             "96715 - LOJA SANTA RITA - PB",
         ],
     }
+    "THAYSA SANDIM DE SOUZA": {
+        "GISELLE MORAES SCHNEIDER": [
+            "11303 - LOJA CARIACICA - ES",
+            "11304 - LOJA GUARAPARI - ES",
+            "9362 - LOJA LINHARES - ES",
+            "9360 - LOJA SERRA - ES",
+            "11950 - LOJA VILA VELHA - ES",
+            "11900 - LOJA VITORIA - ES",
+            "11962 - LOJA CACHOEIRO DE ITAPEMIRIM - ES",
+            "11963 - LOJA LARANJEIRAS - ES",
+        ],
+        "JESSICA FERREIRA FIGUEIREDO": [
+            "40325 - LOJA  JUIZ DE FORA - MG",
+            "400013 - LOJA CATAGUASES - MG",
+            "40324 - LOJA CONSELHEIRO LAFAIETE-MG",
+            "400012 - LOJA MURIAE - MG",
+            "400010 - LOJA SANTOS DUMONT - MG",
+            "92760 - LOJA UBA - MG",
+            "400011 - LOJA VIÇOSA - MG",
+            "7761 - LOJA SAO JOAO DEL REI - MG",
+            "7765 - LOJA BARBACENA - MG",
+        ],
+        "LOSANGELA HONORIO DE OLIVEIRA": [
+            "6000031 - LOJA ANGRA DOS REIS - RJ",
+            "61019 - LOJA BARRA DO PIRAI - RJ",
+            "60495 - LOJA BARRA MANSA - RJ",
+            "600046 - LOJA CRUZEIRO - SP",
+            "600056 - LOJA GUARATINGUETA - SP",
+            "600047 - LOJA LORENA - SP",
+            "60498 - LOJA RESENDE - RJ",
+            "60007 - LOJA VOLTA REDONDA - RJ",
+            "60494 - LOJA VOLTA REDONDA II - RJ",
+            "61050 - LOJA TRES RIOS - RJ",
+        ],
+        "MARILIA GABRIELA LOPES FARIA": [
+            "60099 - LOJA BANGU - RJ",
+            "61045 - LOJA CAMPO GRANDE - RJ",
+            "60501 - LOJA MADUREIRA - RJ",
+            "60502 - LOJA MEIER - RJ",
+            "61061 - LOJA NILOPOLIS - RJ",
+            "61064 - LOJA MESQUITA - RJ",
+            "61060 - LOJA SAO JOAO DE MERITI - RJ",
+        ],
+        "MARIA EDUARDA DELGADO MENESES": [
+            "60503 - LOJA DUQUE DE CAXIAS - RJ",
+            "60500 - LOJA NITEROI - RJ",
+            "60507 - LOJA NOVA IGUAÇU - RJ",
+            "60900 - LOJA RIO DE JANEIRO - RJ",
+            "61049 - LOJA SAO GONCALO - RJ",
+            "61057 - LOJA ITABORAI - RJ",
+        ],
+        "RENATO SOUZA DO ESPIRITO SANTO LANGA": [
+            "4900 - LOJA BELO HORIZONTE - MG",
+            "45034 - LOJA CONTAGEM - MG",
+            "45018 - LOJA SANTA LUZIA - MG",
+            "7754 - LOJA BETIM - MG",
+            "7759 - LOJA BELO HORIZONTE - BARRO PRETO - MG",
+            "7755 - LOJA BELO HORIZONTE - BETANIA - MG",
+            "7757 - LOJA BELO HORIZONTE - VENDA NOVA - MG",
+        ],
+        "YASMIM APARECIDA DOS ANJOS PARANHOS": [
+            "61056 - LOJA MACAE - RJ",
+            "61054 - LOJA RIO DAS OSTRAS - RJ",
+            "61055 - LOJA SAQUAREMA - RJ",
+            "61053 - LOJA CABO FRIO - RJ",
+            "61052 - LOJA CAMPO DOS GOYTACAZES 1 - RJ",
+            "61051 - LOJA ARARUAMA - RJ",
+            "61058 - LOJA SAO PEDRO DA ALDEIA - RJ",
+        ],
+
+    }
 }
 
 # ===== SELECTS FORA DO FORM =====
