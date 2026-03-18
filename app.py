@@ -569,7 +569,7 @@ hierarquia = {
             "1422 - LOJA TAPES - RS",
             "94390 - LOJA PORTO ALEGRE - MARECHAL - RS",
         ],
-    }
+    },
     "CRISTIANE CARVALHO GEBELATTO": {
         "BRENO ROCHA HONORATO DA SILVA": [
             "9366 - LOJA CONJ CEARA - FORTALEZA - CE",
@@ -633,7 +633,7 @@ hierarquia = {
             "9399 - LOJA RECIFE - PE",
             "96715 - LOJA SANTA RITA - PB",
         ],
-    }
+    },
     "THAYSA SANDIM DE SOUZA": {
         "GISELLE MORAES SCHNEIDER": [
             "11303 - LOJA CARIACICA - ES",
