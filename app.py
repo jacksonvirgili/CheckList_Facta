@@ -57,7 +57,7 @@ def ensure_roteiros_header(ws):
     if ws.row_values(1) != headers:
         ws.insert_row(headers, 1)
 
-def salvar_roteiro(linha):
+def salvar_roteiro(gc, sheet_id, linha):
     ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
     ensure_roteiros_header(ws)
     append_with_retry(ws, linha)
