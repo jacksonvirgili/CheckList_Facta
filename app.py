@@ -672,12 +672,10 @@ with tab_roteiro:
             st.session_state["rot_week_start"] += timedelta(days=7)
             st.rerun()
 
-#=============================
-# HIERAQUIA
-#===========================
-
-
-def render_checklist():
+# =========================
+# ABA CHECKLIST
+# =========================
+with tab_checklist:
 
     st.subheader("Checklist de Acompanhamento")
 
@@ -779,7 +777,7 @@ def render_checklist():
     ]
 
     # =========================
-    # FORM
+    # FORMULÁRIO
     # =========================
     with st.form("checklist_form"):
 
@@ -807,14 +805,11 @@ def render_checklist():
                 horizontal=True,
                 key=f"q{i}"
             )
-
             respostas.append(resposta)
 
         st.divider()
 
-        confirmar_localizacao = st.checkbox(
-            "Autorizo a captura da minha localização"
-        )
+        confirmar_localizacao = st.checkbox("Autorizo a captura da minha localização")
 
         enviar = st.form_submit_button("Enviar Checklist")
 
@@ -825,43 +820,34 @@ def render_checklist():
 
             if not confirmar_localizacao:
                 st.error("Autorize a localização para enviar.")
-                return
-
-            if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
+            elif not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
                 st.error("Erro ao capturar localização.")
-                return
-
-            if (
+            elif (
                 regional == "Selecione"
                 or coordenador == "Selecione"
                 or loja == "Selecione"
                 or not supervisor.strip()
             ):
                 st.error("Preencha todos os campos.")
-                return
+            else:
+                agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+                linha = [
+                    agora,
+                    regional,
+                    coordenador,
+                    loja,
+                    supervisor,
+                    localizacao["latitude"],
+                    localizacao["longitude"],
+                    localizacao["accuracy"],
+                    *respostas
+                ]
 
-            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
-
-            linha = [
-                agora,
-                regional,
-                coordenador,
-                loja,
-                supervisor,
-                localizacao["latitude"],
-                localizacao["longitude"],
-                localizacao["accuracy"],
-                *respostas
-            ]
-
-            try:
-                ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
-                append_with_retry(ws, linha)
-
-                st.success("Checklist enviado ✅")
-
-            except Exception as e:
-                st.error("Erro ao salvar no Google Sheets")
-                st.exception(e)
-
+                try:
+                    ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
+                    append_with_retry(ws, linha)
+                    st.success("Checklist enviado ✅")
+                except Exception as e:
+                    st.error("Erro ao salvar no Google Sheets")
+                    st.exception(e)
 
