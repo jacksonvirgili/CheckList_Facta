@@ -447,7 +447,7 @@ def proximo_domingo(d):
 # ------------------------------------------------------------
 # UI
 # ------------------------------------------------------------
-st.title("Check-list de Acompanhamento")
+st.title("Acompanhamento de Lojas")
 
 tab_roteiro, tab_checklist = st.tabs(["🗓️ Roteiro", "✅ Checklist"])
 
