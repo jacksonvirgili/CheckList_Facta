@@ -827,6 +827,7 @@ def gerar_pdf_checklist(
     buffer.seek(0)
     return buffer
 
+
 # =========================
 # ABA CHECKLIST
 # =========================
@@ -853,6 +854,8 @@ with tab_checklist:
     # =========================
     # GEOLOCALIZAÇÃO
     # =========================
+    from streamlit_js_eval import streamlit_js_eval
+
     localizacao = streamlit_js_eval(
         js_expressions="""
         new Promise((resolve) => {
@@ -889,6 +892,7 @@ with tab_checklist:
     # PERGUNTAS
     # =========================
     st.subheader("Perguntas")
+
     perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e compartilha os resultados?",
         "02. Aplica o CLAV semanalmente com base em evidências",
@@ -929,113 +933,77 @@ with tab_checklist:
     ]
 
     # =========================
-    # FORMULÁRIO
+    # CENTRALIZANDO O FORMULÁRIO
     # =========================
-    with st.form("checklist_form"):
-        respostas = []
+    col1, col2, col3 = st.columns([1, 2, 1])  # col2 é central
+    with col2:
+        with st.form("checklist_form"):
+            respostas = []
 
-        for i, pergunta in enumerate(perguntas, start=1):
+            for i, pergunta in enumerate(perguntas, start=1):
 
-            # Seções visuais
-            if i == 1:
-                st.subheader("AVALIAR")
-            elif i == 4:
-                st.subheader("TREINAR")
-            elif i == 9:
-                st.subheader("DOMÍNIO DA EQUIPE")
-            elif i == 16:
-                st.subheader("INCENTIVAR")
-            elif i == 19:
-                st.subheader("VERIFICAR")
-            elif i == 22:
-                st.subheader("ACOMPANHAR")
+                # Seções
+                if i == 1:
+                    st.subheader("AVALIAR")
+                elif i == 4:
+                    st.subheader("TREINAR")
+                elif i == 9:
+                    st.subheader("DOMÍNIO DA EQUIPE")
+                elif i == 16:
+                    st.subheader("INCENTIVAR")
+                elif i == 19:
+                    st.subheader("VERIFICAR")
+                elif i == 22:
+                    st.subheader("ACOMPANHAR")
 
-            resposta = st.radio(
-                pergunta,
-                ["Sim", "Não"],
-                horizontal=True,
-                key=f"q{i}"
-            )
-            respostas.append(resposta)
-
-        st.divider()
-        confirmar_localizacao = st.checkbox("Autorizo a captura da minha localização")
-
-        # **Submit button obrigatório**
-        enviar = st.form_submit_button("Enviar Checklist")
-
-    # =========================
-    # PROCESSAR ENVIO
-    # =========================
-    if enviar:
-        if not confirmar_localizacao:
-            st.error("Autorize a localização para enviar.")
-        elif not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
-            st.error("Erro ao capturar localização.")
-        elif regional == "Selecione" or coordenador == "Selecione" or loja == "Selecione" or not supervisor.strip():
-            st.error("Preencha todos os campos obrigatórios.")
-        else:
-            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
-            linha = [
-                agora,
-                regional,
-                coordenador,
-                loja,
-                supervisor,
-                localizacao["latitude"],
-                localizacao["longitude"],
-                localizacao["accuracy"],
-                *respostas
-            ]
-
-            # Salva no Google Sheets
-            try:
-                ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
-                append_with_retry(ws, linha)
-                st.success("Checklist enviado ✅")
-            except Exception as e:
-                st.error("Erro ao salvar no Google Sheets")
-                st.exception(e)
-
-            # Gera PDF
-            try:
-                pdf_buffer = gerar_pdf_checklist(
-                    agora=agora,
-                    regional=regional,
-                    coordenador=coordenador,
-                    loja=loja,
-                    supervisor=supervisor,
-                    latitude=localizacao["latitude"],
-                    longitude=localizacao["longitude"],
-                    precisao=localizacao["accuracy"],
-                    perguntas=perguntas,
-                    respostas=respostas
+                resposta = st.radio(
+                    pergunta,
+                    ["Sim", "Não"],
+                    horizontal=True,
+                    key=f"q{i}"
                 )
-                pdf_bytes = pdf_buffer.getvalue()
-                st.session_state["pdf_bytes"] = pdf_bytes
-                st.session_state["pdf_name"] = f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf"
-                st.session_state["just_submitted"] = True
-            except Exception as e:
-                st.error("Erro ao gerar PDF")
-                st.exception(e)
+                respostas.append(resposta)
 
-    # =========================
-    # DOWNLOAD DO PDF
-    # =========================
-    if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
-        st.success("Checklist enviado com sucesso ✅")
-        st.download_button(
-            label="📄 Baixar PDF do checklist",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
-            mime="application/pdf"
-        )
-        st.session_state["just_submitted"] = False
-    elif st.session_state.get("pdf_bytes"):
-        # Último envio
-        st.download_button(
-            label="📄 Baixar PDF do último checklist",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
-            mime="application/pdf"
-        )
+            st.divider()
+
+            confirmar_localizacao = st.checkbox("Autorizo a captura da minha localização")
+
+            enviar = st.form_submit_button("Enviar Checklist")
+
+            # =========================
+            # SUBMIT
+            # =========================
+            if enviar:
+
+                if not confirmar_localizacao:
+                    st.error("Autorize a localização para enviar.")
+                elif not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
+                    st.error("Erro ao capturar localização.")
+                elif (
+                    regional == "Selecione"
+                    or coordenador == "Selecione"
+                    or loja == "Selecione"
+                    or not supervisor.strip()
+                ):
+                    st.error("Preencha todos os campos.")
+                else:
+                    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+                    linha = [
+                        agora,
+                        regional,
+                        coordenador,
+                        loja,
+                        supervisor,
+                        localizacao["latitude"],
+                        localizacao["longitude"],
+                        localizacao["accuracy"],
+                        *respostas
+                    ]
+
+                    try:
+                        ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
+                        append_with_retry(ws, linha)
+                        st.success("Checklist enviado ✅")
+                    except Exception as e:
+                        st.error("Erro ao salvar no Google Sheets")
+                        st.exception(e)
