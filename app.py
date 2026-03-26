@@ -673,6 +673,151 @@ with tab_roteiro:
             st.rerun()
 
 # =========================
+# FUNÇÃO PARA GERAR PDF DO CHECKLIST
+# =========================
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import unicodedata
+
+def gerar_pdf_checklist(
+    agora, regional, coordenador, loja, supervisor,
+    latitude, longitude, precisao,
+    perguntas, respostas
+):
+    """
+    Gera um PDF em memória com:
+    - Identificação
+    - Link da localização
+    - Resumo geral (Sim/Não/Total/% Sim)
+    - Perguntas e Respostas
+    - Resumo por Seção
+    Retorna BytesIO
+    """
+    buffer = BytesIO()
+
+    left, right, top, bottom = 20*mm, 20*mm, 15*mm, 15*mm
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=left,
+        rightMargin=right,
+        topMargin=top,
+        bottomMargin=bottom
+    )
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4))
+    styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+    styles.add(ParagraphStyle(name="Pergunta", fontName="Helvetica", fontSize=9, leading=11, spaceAfter=0, wordWrap="LTR"))
+
+    elementos = []
+
+    # Cabeçalho e identificação
+    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
+    elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
+
+    meta_data = [
+        ["Data/Hora", agora],
+        ["Regional", regional],
+        ["Coordenador", coordenador],
+        ["Loja", loja],
+        ["Supervisor", supervisor],
+    ]
+    content_w = A4[0] - left - right
+    tabela_meta = Table(meta_data, colWidths=[40*mm, content_w - 40*mm], hAlign="LEFT")
+    tabela_meta.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("ALIGN", (0,0), (-1,-1), "LEFT"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_meta)
+
+    # Link da localização
+    if latitude and longitude:
+        url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
+        elementos.append(Spacer(1, 4))
+        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
+    elementos.append(Spacer(1, 8))
+
+    # Normaliza respostas
+    def normaliza(txt):
+        if txt is None:
+            return ""
+        s = str(txt).strip().lower()
+        s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+        return s
+
+    respostas_norm = [normaliza(r) for r in respostas]
+
+    # Resumo geral
+    total_perguntas = len(perguntas)
+    total_sim = sum(1 for r in respostas_norm if r == "sim")
+    total_nao = sum(1 for r in respostas_norm if r == "nao")
+    perc_sim = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
+
+    elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
+    elementos.append(Paragraph(
+        f"Sim: {total_sim}  |  Não: {total_nao}  |  Total: {total_perguntas}  |  Sim: {perc_sim:.1f}%",
+        styles["Normal10"]
+    ))
+    elementos.append(Spacer(1, 6))
+
+    # Perguntas e respostas
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
+
+    num_w = 12*mm
+    resp_w = 25*mm
+    pergunta_w = content_w - (num_w + resp_w)
+
+    linhas_qa = [
+        [Paragraph("#", styles["Normal10"]),
+         Paragraph("Pergunta", styles["Normal10"]),
+         Paragraph("Resposta", styles["Normal10"])]
+    ]
+
+    for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        linhas_qa.append([Paragraph(f"{idx:02d}", styles["Normal10"]),
+                          Paragraph(p, styles["Pergunta"]),
+                          Paragraph(r, styles["Normal10"])])
+
+    tabela_qa = Table(linhas_qa, colWidths=[num_w, pergunta_w, resp_w], repeatRows=1, splitByRow=1, hAlign="LEFT")
+    tabela_qa.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
+    elementos.append(tabela_qa)
+    elementos.append(Spacer(1, 8))
+
+    # Rodapé
+    elementos.append(Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"]))
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+
+# =========================
 # ABA CHECKLIST
 # =========================
 with tab_checklist:
