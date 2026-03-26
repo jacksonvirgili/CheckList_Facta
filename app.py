@@ -8,12 +8,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 from streamlit_js_eval import streamlit_js_eval
 from gspread.exceptions import APIError, WorksheetNotFound
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-import unicodedata
 
 # ------------------------------------------------------------
 # CONFIG
@@ -64,7 +58,7 @@ def salvar_roteiro(gc, sheet_id, linha):
     append_with_retry(ws, linha)
 
 # ------------------------------------------------------------
-# HIERARQUIA (COLE AQUI)
+# HIERARQUIA (uma única fonte usada por Checklist e Roteiro)
 # ------------------------------------------------------------
 hierarquia = {
     "MAYARA NOVAIS LOPES": {
@@ -436,46 +430,12 @@ def get_opcoes_hierarquia(hierarquia, regional, coordenador):
     lojas = ["Selecione"]
     if regional and regional != "Selecione":
         coordenadores = ["Selecione"] + list(hierarquia[regional].keys())
-    if coordenador and coordenador != "Selecione":
-        lojas = ["Selecione"] + hierarquia[regional][coordenador]
+        if coordenador and coordenador != "Selecione":
+            lojas = ["Selecione"] + hierarquia[regional][coordenador]
     return regionais, coordenadores, lojas
 
 def proximo_domingo(d):
     return d + timedelta(days=(6 - d.weekday() + 7) % 7 or 7)
-
-def brasil_feriados(ano):
-    return {
-        _date(ano, 1, 1): "Confraternização Universal",
-        _date(ano, 4, 21): "Tiradentes",
-        _date(ano, 5, 1): "Dia do Trabalho",
-        _date(ano, 9, 7): "Independência",
-        _date(ano, 10, 12): "Nossa Senhora Aparecida",
-        _date(ano, 11, 2): "Finados",
-        _date(ano, 11, 15): "Proclamação da República",
-        _date(ano, 12, 25): "Natal",
-    }
-
-def carregar_roteiros():
-    try:
-        ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
-        dados = ws.get_all_records()
-        mapa = {}
-        for r in dados:
-            data = r.get("DATA")
-            if data:
-                mapa[data] = {
-                    "loja": r.get("LOJA", "Selecione"),
-                    "obs": r.get("OBS", "")
-                }
-        return mapa
-    except:
-        return {}
-
-# ------------------------------------------------------------
-# ESTADO
-# ------------------------------------------------------------
-if "rot_agendamentos" not in st.session_state:
-    st.session_state["rot_agendamentos"] = carregar_roteiros()
 
 # ------------------------------------------------------------
 # UI
@@ -489,7 +449,42 @@ tab_roteiro, tab_checklist = st.tabs(["🗓️ Roteiro", "✅ Checklist"])
 with tab_roteiro:
     st.subheader("Roteiro de Visitas")
 
-    # Hierarquia
+    # =========================
+    # HELPERS LOCAIS
+    # =========================
+    from datetime import date
+
+    def brasil_feriados(ano):
+        return {
+            date(ano, 1, 1): "Confraternização Universal",
+            date(ano, 4, 21): "Tiradentes",
+            date(ano, 5, 1): "Dia do Trabalho",
+            date(ano, 9, 7): "Independência",
+            date(ano, 10, 12): "Nossa Senhora Aparecida",
+            date(ano, 11, 2): "Finados",
+            date(ano, 11, 15): "Proclamação da República",
+            date(ano, 12, 25): "Natal",
+        }
+
+    def carregar_roteiros():
+        try:
+            ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
+            dados = ws.get_all_records()
+            mapa = {}
+            for r in dados:
+                data = r.get("DATA")
+                if data:
+                    mapa[data] = {"loja": r.get("LOJA", "Selecione"), "obs": r.get("OBS", "")}
+            return mapa
+        except:
+            return {}
+
+    if "rot_agendamentos" not in st.session_state:
+        st.session_state["rot_agendamentos"] = carregar_roteiros()
+
+    # =========================
+    # HIERARQUIA
+    # =========================
     regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
     regional_r = st.selectbox("Regional", regionais, key="rot_regional")
     _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional_r, "Selecione")
@@ -500,7 +495,9 @@ with tab_roteiro:
     if coordenador_r == "Selecione":
         st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
     else:
-        # Semana
+        # =========================
+        # SEMANA
+        # =========================
         hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
         if "rot_week_start" not in st.session_state:
             st.session_state["rot_week_start"] = proximo_domingo(hoje)
@@ -510,12 +507,16 @@ with tab_roteiro:
             f"**Semana de {week_start.strftime('%d/%m/%Y')} até {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}**"
         )
 
-        # Feriados
+        # =========================
+        # FERIADOS
+        # =========================
         feriados_map = brasil_feriados(week_start.year)
         if (week_start + timedelta(days=6)).year != week_start.year:
             feriados_map.update(brasil_feriados((week_start + timedelta(days=6)).year))
 
-        # Calendário
+        # =========================
+        # CALENDÁRIO
+        # =========================
         cols_days = st.columns(7)
         weekday_labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
         for i, dia in enumerate(week_days):
@@ -530,29 +531,41 @@ with tab_roteiro:
             obs_valor = agendamento.get("obs", "")
             border_color = "#F2A6A6" if bloqueado else "#DDD"
             bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
-
             box.markdown(
-                f"""<div style="border:1.5px solid {border_color}; background:{bg_color}; border-radius:12px; padding:10px; min-height:190px;">
-                <div style="text-align:center; font-weight:600; font-size:13px; margin-bottom:8px; color:{'#D32F2F' if bloqueado else '#0A0A0A'};">
+                f"""
+                <div style="
+                    border:1.5px solid {border_color};
+                    background:{bg_color};
+                    border-radius:12px;
+                    padding:10px;
+                    min-height:190px;
+                ">
+                <div style="
+                    text-align:center;
+                    font-weight:600;
+                    font-size:13px;
+                    margin-bottom:8px;
+                    color:{'#D32F2F' if bloqueado else '#0A0A0A'};
+                ">
                 {dia_label} • {dia.strftime('%d/%m')}
-                </div>""",
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
 
-            # Feriado
             if is_feriado:
                 box.markdown(
                     f"<div style='font-size:11px;color:#C62828'>{feriados_map[dia]}</div>",
                     unsafe_allow_html=True,
                 )
-
-            # Bloqueado
             if bloqueado:
                 msg = "Feriado" if is_feriado else "Fim de semana"
                 box.markdown(f"<div style='color:#C62828'>{msg}</div>", unsafe_allow_html=True)
             else:
                 opcoes = ["Selecione"] + lojas_opcoes
-                index = opcoes.index(loja_valor) if loja_valor in opcoes else 0
+                index = 0
+                if loja_valor in opcoes:
+                    index = opcoes.index(loja_valor)
                 loja_escolhida = box.selectbox(
                     "Loja", opcoes, index=index, key=f"loja_{dia_iso}", label_visibility="collapsed"
                 )
@@ -571,10 +584,7 @@ with tab_roteiro:
                         ]
                         try:
                             salvar_roteiro(gc, SHEET_ID, linha)
-                            st.session_state["rot_agendamentos"][dia_iso] = {
-                                "loja": loja_escolhida,
-                                "obs": obs,
-                            }
+                            st.session_state["rot_agendamentos"][dia_iso] = {"loja": loja_escolhida, "obs": obs}
                             st.success("Agendado ✅")
                             time.sleep(0.5)
                             st.rerun()
@@ -585,7 +595,9 @@ with tab_roteiro:
                     box.button("Agendar", disabled=True, key=f"ag_dis_{dia_iso}")
             box.markdown("</div>", unsafe_allow_html=True)
 
-        # Navegação
+        # =========================
+        # NAVEGAÇÃO
+        # =========================
         st.markdown("<br>", unsafe_allow_html=True)
         nav = st.columns([1, 2, 1])[1]
         c1, c2 = nav.columns(2)
@@ -598,6 +610,35 @@ with tab_roteiro:
                 st.session_state["rot_week_start"] += timedelta(days=7)
                 st.rerun()
 
+        # =========================
+        # GERAR PDF DO ROTEIRO
+        # =========================
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+
+        def gerar_pdf_roteiro(week_start, agendamentos):
+            buffer = BytesIO()
+            left, right, top, bottom = 20*mm, 20*mm, 15*mm, 15*mm
+            doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=left, rightMargin=right, topMargin=top, bottomMargin=bottom)
+            styles = getSampleStyleSheet()
+            styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+            styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+            elementos = []
+            elementos.append(Paragraph(f"Roteiro de Visitas: {week_start.strftime('%d/%m/%Y')} até {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}", styles["Titulo"]))
+            for dia_iso, ag in agendamentos.items():
+                elementos.append(Paragraph(f"{dia_iso}: {ag.get('loja','')} - Obs: {ag.get('obs','')}", styles["Normal10"]))
+                elementos.append(Spacer(1, 4))
+            doc.build(elementos)
+            buffer.seek(0)
+            return buffer
+
+        if st.button("📄 Gerar PDF do Roteiro"):
+            pdf_buffer = gerar_pdf_roteiro(week_start, st.session_state["rot_agendamentos"])
+            st.download_button("Download PDF", pdf_buffer, file_name=f"roteiro_{week_start}.pdf", mime="application/pdf")
+
 # ============================================================
 # ABA CHECKLIST
 # ============================================================
@@ -606,90 +647,101 @@ with tab_checklist:
     with col2:
         st.subheader("Checklist de Acompanhamento")
 
-    # Hierarquia
-    regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
-    regional = st.selectbox("Regional", regionais)
-    _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional, "Selecione")
-    coordenador = st.selectbox("Coordenador", coordenadores)
-    _, _, lojas = get_opcoes_hierarquia(hierarquia, regional, coordenador)
-    loja = st.selectbox("Loja", lojas)
-    supervisor = st.text_input("Supervisor de Loja")
-    st.divider()
+        perguntas = [
+            "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
+            "02. Aplica o CLAV semanalmente com base em evidências",
+            "03. Aplica e mantem atualizado o diagnóstico do colaborador, usando as informações de maneira estratégica",
+            "04. Realiza microtreinamentos com a equipe",
+            "05. Está presente corrigindo execuções em tempo real",
+            "06. Utiliza o Teatro de Vendas e Aplica dinâmicas rápidas e criativas durante o dia",
+            "07. Aplica Feedback SAR com frequência",
+            "08. Supervisor consegue ser claro quanto as evidências de aplicação que serão verificadas nos próximos atendimentos/dias.",
+            "09. A equipe domina técnica de pesquisa (perguntas abertas e SPIN)",
+            "10. A equipe sabe destacar vantagens e benefícios dos produtos comercializados",
+            "11. A equipe sabe destacar as vantagens e benefícios da empresa para o cliente",
+            "12. A equipe em loja possui total domínio nas técnicas de neutralização de objeções e as utilizam quando necessária nos atendimentos",
+            "13. A equipe em loja tem habilidade necessária para realizar o cross de todos os produtos para cada cliente.",
+            "14. Os Consultores pedem indicação ao final do atendimento",
+            "15. Os Consultores seguem os passos da jornada",
+            "16. Reconhece avanços da equipe",
+            "17. Utiliza linguagem positiva e motivadora",
+            "18. Supervisor conhece sonhos e objetivos de cada colaborador",
+            "19. Acompanha indicadores técnicos semanalmente (ATIVA)",
+            "20. Analisa comportamento da equipe com base em dados (CLAV e Observação Direta)",
+            "21. Garante que o que foi treinado esteja sendo aplicado através da observação de evidências de aplicação.",
+            "22. Faz reuniões 1:1 com os consultores semanalmente",
+            "23. Atualiza e utiliza o PDI individual customizando as ações de treinamento em loja",
+            "24. Supervisor tem ciência de todas as pendências de contrato, e propostas negadas",
+            "25. Consultores sabem sua meta diária, acumulado, tkm, etc e sabem a importância destes números",
+            "26. O Supervisor de Loja possui de forma clara e objetiva o controle da informação de agendamentos",
+            "27. A equipe na loja conhece e domina todos os campos e funcionalidades de todos os sistemas operacionais?",
+            "28. A equipe da loja possui boa apresentação pessoal, de acordo com as políticas e normas de conduta da empresa",
+            "29. O Supervisor de Loja organiza e acompanha diariamente o rodízio de acionamentos de sua equipe?",
+            "30. O Supervisor de Loja tem acompanhado os comunicados internos, lendo entendendo, repassando e orientando sua equipe, garantindo entendimento e a execução imediata?",
+            "31. O Supervisor acompanha e trata o não pagamento da 1ª parcela débito.",
+            "32. O Supervisor atua diariamente sobre os saldos de portabilidade - aprovando, cancelando e analisando os motivos dos saldos cancelados.",
+            "33. O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?",
+            "34. Supervisor faz a gestão e controle das horas extras diariamente?",
+            "35. A equipe mantém assiduidade em loja (pontualidade e frequência).",
+            "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
+        ]
 
-    # Geolocalização
-    localizacao = streamlit_js_eval(
-        js_expressions=""" 
-        new Promise((resolve) => {
-            if (!('geolocation' in navigator)) { resolve(null); return; }
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
-                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-            );
-        }) """,
-        key="get_location_once"
-    )
-    latitude = longitude = precisao = None
-    if isinstance(localizacao, dict):
-        if localizacao.get("error"):
-            st.warning(
-                "Não foi possível obter a localização. "
-                "Habilite a permissão no navegador e atualize a página.\n\n"
-                f"Detalhe: {localizacao.get('message', '')}"
-            )
-        else:
-            latitude = localizacao.get("latitude")
-            longitude = localizacao.get("longitude")
-            precisao = localizacao.get("accuracy")
-
-    # Perguntas
-    perguntas = [
-        "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
-        "02. Aplica o CLAV semanalmente com base em evidências",
-        "03. Aplica e mantem atualizado o diagnóstico do colaborador, usando as informações de maneira estratégica",
-        "04. Realiza microtreinamentos com a equipe",
-        "05. Está presente corrigindo execuções em tempo real",
-        "06. Utiliza o Teatro de Vendas e Aplica dinâmicas rápidas e criativas durante o dia",
-        "07. Aplica Feedback SAR com frequência",
-        "08. Supervisor consegue ser claro quanto as evidências de aplicação que serão verificadas nos próximos atendimentos/dias.",
-        "09. A equipe domina técnica de pesquisa (perguntas abertas e SPIN)",
-        "10. A equipe sabe destacar vantagens e benefícios dos produtos comercializados",
-        "11. A equipe sabe destacar as vantagens e benefícios da empresa para o cliente",
-        "12. A equipe em loja possui total domínio nas técnicas de neutralização de objeções e as utilizam quando necessária nos atendimentos",
-        "13. A equipe em loja tem habilidade necessária para realizar o cross de todos os produtos para cada cliente.",
-        "14. Os Consultores pedem indicação ao final do atendimento",
-        "15. Os Consultores seguem os passos da jornada",
-        "16. Reconhece avanços da equipe",
-        "17. Utiliza linguagem positiva e motivadora",
-        "18. Supervisor conhece sonhos e objetivos de cada colaborador",
-        "19. Acompanha indicadores técnicos semanalmente (ATIVA)",
-        "20. Analisa comportamento da equipe com base em dados (CLAV e Observação Direta)",
-        "21. Garante que o que foi treinado esteja sendo aplicado através da observação de evidências de aplicação.",
-        "22. Faz reuniões 1:1 com os consultores semanalmente",
-        "23. Atualiza e utiliza o PDI individual customizando as ações de treinamento em loja",
-        "24. Supervisor tem ciência de todas as pendências de contrato, e propostas negadas",
-        "25. Consultores sabem sua meta diária, acumulado, tkm, etc e sabem a importância destes números",
-        "26. O Supervisor de Loja possui de forma clara e objetiva o controle da informação de agendamentos",
-        "27. A equipe na loja conhece e domina todos os campos e funcionalidades de todos os sistemas operacionais?",
-        "28. A equipe da loja possui boa apresentação pessoal, de acordo com as políticas e normas de conduta da empresa",
-        "29. O Supervisor de Loja organiza e acompanha diariamente o rodízio de acionamentos de sua equipe?",
-        "30. O Supervisor de Loja tem acompanhado os comunicados internos, lendo entendendo, repassando e orientando sua equipe, garantindo entendimento e a execução imediata?",
-        "31. O Supervisor acompanha e trata o não pagamento da 1ª parcela débito.",
-        "32. O Supervisor atua diariamente sobre os saldos de portabilidade - aprovando, cancelando e analisando os motivos dos saldos cancelados.",
-        "33. O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?",
-        "34. Supervisor faz a gestão e controle das horas extras diariamente?",
-        "35. A equipe mantém assiduidade em loja (pontualidade e frequência).",
-        "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
-    ]
-    respostas = []
-    for idx, p in enumerate(perguntas, start=1):
-        r = st.selectbox(f"{p}", ["", "Sim", "Não"], key=f"resp_{idx}")
-        respostas.append(r)
-
-    if st.button("Gerar PDF"):
-        agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-        pdf_buffer = gerar_pdf_checklist(
-            agora, regional, coordenador, loja, supervisor,
-            latitude, longitude, precisao, perguntas, respostas
+      respostas = []
+        for idx, pergunta in enumerate(perguntas, start=1):
+            opcoes = ["", "Sim", "Não"]
+            resposta = st.selectbox(pergunta, opcoes, key=f"resp_{idx}")
+            respostas.append(resposta)
+    
+        st.divider()
+    
+        # Geolocalização
+        localizacao = streamlit_js_eval(
+            js_expressions="""
+            new Promise((resolve) => {
+                if (!('geolocation' in navigator)) { resolve(null); return; }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                    (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+                );
+            })
+            """,
+            key="get_location_once",
         )
-        st.download_button("📥 Baixar PDF", pdf_buffer, file_name="checklist.pdf", mime="application/pdf")
+    
+        supervisor = st.text_input("Supervisor de Loja")
+        regional = "Regional Ex"
+        coordenador = "Coordenador Ex"
+        loja = "Loja Ex"
+    
+        # Botão gerar PDF
+        from datetime import datetime
+        if st.button("📄 Gerar PDF do Checklist"):
+            agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            latitude = localizacao.get("latitude") if localizacao else None
+            longitude = localizacao.get("longitude") if localizacao else None
+            precisao = localizacao.get("accuracy") if localizacao else None
+    
+            pdf_buffer = gerar_pdf_checklist(
+                agora=agora,
+                regional=regional,
+                coordenador=coordenador,
+                loja=loja,
+                supervisor=supervisor,
+                latitude=latitude,
+                longitude=longitude,
+                precisao=precisao,
+                perguntas=perguntas,
+                respostas=respostas,
+            )
+            st.download_button(
+                label="⬇️ Baixar PDF",
+                data=pdf_buffer,
+                file_name=f"Checklist_{loja.replace(' ', '_')}_{agora.replace('/', '-').replace(' ', '_')}.pdf",
+                mime="application/pdf",
+            )
+    
+        st.info(
+            "O checklist permanece apenas para consulta e não pode ser alterado. "
+            "Para ajustes de visitas ou agendamentos, utilize a aba de **Roteiro**."
+        )
