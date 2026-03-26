@@ -431,10 +431,10 @@ def get_opcoes_hierarquia(hierarquia, regional, coordenador):
     coordenadores = ["Selecione"]
     lojas = ["Selecione"]
 
-    if regional != "Selecione":
+    if regional and regional != "Selecione":
         coordenadores = ["Selecione"] + list(hierarquia[regional].keys())
 
-        if coordenador != "Selecione":
+        if coordenador and coordenador != "Selecione":
             lojas = ["Selecione"] + hierarquia[regional][coordenador]
 
     return regionais, coordenadores, lojas
@@ -459,7 +459,7 @@ with tab_roteiro:
     if "rot_agendamentos" not in st.session_state:
         st.session_state["rot_agendamentos"] = {}
 
-    regionais, _, _ = get_opcoes_hierarquia(hierarquia, None, None)
+    regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
     regional = st.selectbox("Regional", regionais)
 
     _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional, None)
