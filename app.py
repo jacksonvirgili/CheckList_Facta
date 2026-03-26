@@ -667,6 +667,92 @@ with tab_roteiro:
         if st.button("Próxima semana ▶️"):
             st.session_state["rot_week_start"] += timedelta(days=7)
             st.rerun()
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from io import BytesIO
+import streamlit as st
+
+def gerar_pdf_roteiro(week_days, agendamentos, regional, coordenador):
+    buffer = BytesIO()
+    left, right, top, bottom = 20*mm, 20*mm, 15*mm, 15*mm
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=left, rightMargin=right, topMargin=top, bottomMargin=bottom)
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4))
+    estilos = styles
+
+    elementos = []
+
+    # Cabeçalho
+    elementos.append(Paragraph("Roteiro Semanal de Visitas", estilos["Titulo"]))
+    elementos.append(Paragraph(f"Regional: {regional}  |  Coordenador: {coordenador}", estilos["Normal"]))
+
+    elementos.append(Spacer(1, 8))
+
+    # Monta tabela de agendamentos
+    dados_tabela = [["Dia", "Loja", "Observações"]]
+    for dia in week_days:
+        dia_iso = dia.strftime("%Y-%m-%d")
+        ag = agendamentos.get(dia_iso, {})
+        loja = ag.get("loja", "")
+        obs = ag.get("obs", "")
+        dados_tabela.append([dia.strftime("%a %d/%m"), loja, obs])
+
+    tabela = Table(dados_tabela, colWidths=[30*mm, 80*mm, 60*mm], hAlign="LEFT")
+    tabela.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+    ]))
+    elementos.append(tabela)
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+
+# =========================
+# Botão Gerar PDF
+# =========================
+nav = st.columns([1, 2, 1])[1]
+c1, c2 = nav.columns(2)
+
+with c1:
+    if st.button("◀️ Semana anterior"):
+        st.session_state["rot_week_start"] -= timedelta(days=7)
+        st.rerun()
+
+with c2:
+    if st.button("Próxima semana ▶️"):
+        st.session_state["rot_week_start"] += timedelta(days=7)
+        st.rerun()
+
+# Botão no meio
+col_pdf = nav.columns([1,1,1])[1]
+with col_pdf:
+    if st.button("📄 Gerar Roteiro PDF"):
+        pdf_buffer = gerar_pdf_roteiro(
+            week_days,
+            st.session_state["rot_agendamentos"],
+            regional_r,
+            coordenador_r
+        )
+        st.download_button(
+            "Baixar PDF",
+            data=pdf_buffer,
+            file_name=f"roteiro_{week_start.strftime('%d%m%Y')}.pdf",
+            mime="application/pdf"
+        )
+        st.experimental_rerun()  # Reinicia a página após gerar o PDF
 #=======================================
 # GERAR PDF
 #======================================
