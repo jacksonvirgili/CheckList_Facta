@@ -677,21 +677,12 @@ with tab_roteiro:
             if st.button("Próxima semana ▶️"):
                 st.session_state["rot_week_start"] += timedelta(days=7)
                 st.rerun()
-#=======================================
-# GERAR PDF
-#======================================
-
+# ======================================= 
+# GERAR PDF 
+# ======================================= 
 def gerar_pdf_checklist(
-    agora,
-    regional,
-    coordenador,
-    loja,
-    supervisor,
-    latitude,
-    longitude,
-    precisao,
-    perguntas,
-    respostas,
+    agora, regional, coordenador, loja, supervisor,
+    latitude, longitude, precisao, perguntas, respostas
 ):
     """
     Gera PDF com:
@@ -704,20 +695,13 @@ def gerar_pdf_checklist(
     from io import BytesIO
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        SimpleDocTemplate,
-        Paragraph,
-        Spacer,
-        Table,
-        TableStyle,
-    )
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
     import unicodedata
 
     buffer = BytesIO()
-
-    left, right, top, bottom = 20 * mm, 20 * mm, 15 * mm, 15 * mm
+    left, right, top, bottom = 20*mm, 20*mm, 15*mm, 15*mm
 
     doc = SimpleDocTemplate(
         buffer,
@@ -725,48 +709,14 @@ def gerar_pdf_checklist(
         leftMargin=left,
         rightMargin=right,
         topMargin=top,
-        bottomMargin=bottom,
+        bottomMargin=bottom
     )
 
     styles = getSampleStyleSheet()
-
-    styles.add(
-        ParagraphStyle(
-            name="Titulo",
-            fontName="Helvetica-Bold",
-            fontSize=16,
-            leading=18,
-            spaceAfter=8,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            name="SubTitulo",
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=14,
-            spaceBefore=10,
-            spaceAfter=4,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            name="Normal10",
-            fontName="Helvetica",
-            fontSize=10,
-            leading=12,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            name="Pergunta",
-            fontName="Helvetica",
-            fontSize=9,
-            leading=11,
-            spaceAfter=0,
-            wordWrap="LTR",
-        )
-    )
+    styles.add(ParagraphStyle(name="Titulo", fontName="Helvetica-Bold", fontSize=16, leading=18, spaceAfter=8))
+    styles.add(ParagraphStyle(name="SubTitulo", fontName="Helvetica-Bold", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4))
+    styles.add(ParagraphStyle(name="Normal10", fontName="Helvetica", fontSize=10, leading=12))
+    styles.add(ParagraphStyle(name="Pergunta", fontName="Helvetica", fontSize=9, leading=11, spaceAfter=0, wordWrap="LTR"))
 
     elementos = []
 
@@ -774,9 +724,7 @@ def gerar_pdf_checklist(
     content_w = page_w - left - right
 
     # Cabeçalho
-    elementos.append(
-        Paragraph("Check-list de Acompanhamento", styles["Titulo"])
-    )
+    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
     elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
 
     meta_data = [
@@ -786,40 +734,27 @@ def gerar_pdf_checklist(
         ["Loja", loja],
         ["Supervisor", supervisor],
     ]
-
-    tabela_meta = Table(
-        meta_data,
-        colWidths=[40 * mm, content_w - 40 * mm],
-        hAlign="LEFT",
-    )
-
-    tabela_meta.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("BACKGROUND", (0, 0), (0, -1), colors.whitesmoke),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]
-        )
-    )
-
+    tabela_meta = Table(meta_data, colWidths=[40*mm, content_w - 40*mm], hAlign="LEFT")
+    tabela_meta.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("ALIGN", (0,0), (-1,-1), "LEFT"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
     elementos.append(tabela_meta)
 
     # Localização
     if latitude and longitude:
         url_map = f"https://www.google.com/maps?q={latitude},{longitude}"
         elementos.append(Spacer(1, 4))
-        elementos.append(
-            Paragraph(f"Localização: {url_map}", styles["Normal10"])
-        )
+        elementos.append(Paragraph(f"Localização: {url_map}", styles["Normal10"]))
         elementos.append(Spacer(1, 8))
 
     # Normaliza respostas
@@ -827,11 +762,7 @@ def gerar_pdf_checklist(
         if txt is None:
             return ""
         s = str(txt).strip().lower()
-        s = "".join(
-            c
-            for c in unicodedata.normalize("NFD", s)
-            if unicodedata.category(c) != "Mn"
-        )
+        s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
         return s
 
     respostas_norm = [normaliza(r) for r in respostas]
@@ -840,68 +771,41 @@ def gerar_pdf_checklist(
     total_perguntas = len(perguntas)
     total_sim = sum(1 for r in respostas_norm if r == "sim")
     total_nao = sum(1 for r in respostas_norm if r == "nao")
-    perc_sim = (
-        (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
-    )
+    perc_sim = (total_sim / total_perguntas) * 100 if total_perguntas else 0.0
 
     elementos.append(Paragraph("Resumo", styles["SubTitulo"]))
     elementos.append(
-        Paragraph(
-            f"Sim: {total_sim} | Não: {total_nao} | "
-            f"Total: {total_perguntas} | Sim: {perc_sim:.1f}%",
-            styles["Normal10"],
-        )
+        Paragraph(f"Sim: {total_sim} | Não: {total_nao} | Total: {total_perguntas} | Sim: {perc_sim:.1f}%", styles["Normal10"])
     )
     elementos.append(Spacer(1, 6))
 
     # Perguntas e respostas
-    elementos.append(
-        Paragraph("Perguntas e Respostas", styles["SubTitulo"])
-    )
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
 
-    num_w, resp_w = 12 * mm, 25 * mm
+    num_w, resp_w = 12*mm, 25*mm
     pergunta_w = content_w - (num_w + resp_w)
-
     linhas_qa = [
-        [
-            Paragraph("#", styles["Normal10"]),
-            Paragraph("Pergunta", styles["Normal10"]),
-            Paragraph("Resposta", styles["Normal10"]),
-        ]
+        [Paragraph("#", styles["Normal10"]), Paragraph("Pergunta", styles["Normal10"]), Paragraph("Resposta", styles["Normal10"])]
     ]
 
     for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
-        linhas_qa.append(
-            [
-                Paragraph(f"{idx:02d}", styles["Normal10"]),
-                Paragraph(p, styles["Pergunta"]),
-                Paragraph(r, styles["Normal10"]),
-            ]
-        )
+        linhas_qa.append([
+            Paragraph(f"{idx:02d}", styles["Normal10"]),
+            Paragraph(p, styles["Pergunta"]),
+            Paragraph(r, styles["Normal10"])
+        ])
 
-    tabela_qa = Table(
-        linhas_qa,
-        colWidths=[num_w, pergunta_w, resp_w],
-        repeatRows=1,
-        splitByRow=1,
-        hAlign="LEFT",
-    )
-
-    tabela_qa.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]
-        )
-    )
-
+    tabela_qa = Table(linhas_qa, colWidths=[num_w, pergunta_w, resp_w], repeatRows=1, splitByRow=1, hAlign="LEFT")
+    tabela_qa.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
     elementos.append(tabela_qa)
     elementos.append(Spacer(1, 8))
 
@@ -917,71 +821,45 @@ def gerar_pdf_checklist(
     ]
 
     elementos.append(Paragraph("Resumo por Seção", styles["SubTitulo"]))
-
     linhas_sec = [["Seção", "Sim", "Não", "Total", "% Sim"]]
 
     for nome, ini, fim in secoes:
-        sub_rsps = respostas_norm[ini - 1 : fim]
+        sub_rsps = respostas_norm[ini-1:fim]
         tot = len(sub_rsps)
         sim = sum(1 for r in sub_rsps if r == "sim")
         nao = sum(1 for r in sub_rsps if r == "nao")
-        pct = (sim / tot) * 100 if tot else 0.0
+        pct = (sim / tot)*100 if tot else 0.0
+        linhas_sec.append([nome, str(sim), str(nao), str(tot), f"{pct:.1f}%"])
 
-        linhas_sec.append(
-            [nome, str(sim), str(nao), str(tot), f"{pct:.1f}%"]
-        )
-
-    col_sec_sim = 18 * mm
-    col_sec_nao = 18 * mm
-    col_sec_tot = 18 * mm
-    col_sec_pct = 18 * mm
-    col_sec_nome = (
-        content_w
-        - (col_sec_sim + col_sec_nao + col_sec_tot + col_sec_pct)
-    )
+    col_sec_sim, col_sec_nao, col_sec_tot, col_sec_pct = 18*mm, 18*mm, 18*mm, 18*mm
+    col_sec_nome = content_w - (col_sec_sim + col_sec_nao + col_sec_tot + col_sec_pct)
 
     tabela_sec = Table(
         linhas_sec,
-        colWidths=[
-            col_sec_nome,
-            col_sec_sim,
-            col_sec_nao,
-            col_sec_tot,
-            col_sec_pct,
-        ],
-        hAlign="LEFT",
+        colWidths=[col_sec_nome, col_sec_sim, col_sec_nao, col_sec_tot, col_sec_pct],
+        hAlign="LEFT"
     )
-
-    tabela_sec.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]
-        )
-    )
-
+    tabela_sec.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BOX", (0,0), (-1,-1), 0.5, colors.grey),
+        ("ALIGN", (1,1), (-1,-1), "CENTER"),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+    ]))
     elementos.append(tabela_sec)
     elementos.append(Spacer(1, 8))
 
     # Rodapé
     elementos.append(
-        Paragraph(
-            "Documento gerado automaticamente pelo Check-list de Acompanhamento.",
-            styles["Normal10"],
-        )
+        Paragraph("Documento gerado automaticamente pelo Check-list de Acompanhamento.", styles["Normal10"])
     )
 
     doc.build(elementos)
     buffer.seek(0)
-
     return buffer
 
 
