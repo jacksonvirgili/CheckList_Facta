@@ -935,8 +935,6 @@ with tab_checklist:
     # =========================
     # CENTRALIZANDO O FORMULÁRIO
     # =========================
-    col1, col2, col3 = st.columns([1, 2, 1])  # col2 é central
-    with col2:
         with st.form("checklist_form"):
             respostas = []
 
