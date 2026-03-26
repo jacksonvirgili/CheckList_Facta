@@ -686,62 +686,62 @@ with tab_checklist:
             "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
         ]
 
-          respostas = []
-            for idx, pergunta in enumerate(perguntas, start=1):
-                opcoes = ["", "Sim", "Não"]
-                resposta = st.selectbox(pergunta, opcoes, key=f"resp_{idx}")
-                respostas.append(resposta)
-        
-            st.divider()
-        
-            # Geolocalização
-            localizacao = streamlit_js_eval(
-                js_expressions="""
-                new Promise((resolve) => {
-                    if (!('geolocation' in navigator)) { resolve(null); return; }
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                        (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
-                        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-                    );
-                })
-                """,
-                key="get_location_once",
+      respostas = []
+        for idx, pergunta in enumerate(perguntas, start=1):
+            opcoes = ["", "Sim", "Não"]
+            resposta = st.selectbox(pergunta, opcoes, key=f"resp_{idx}")
+            respostas.append(resposta)
+    
+        st.divider()
+    
+        # Geolocalização
+        localizacao = streamlit_js_eval(
+            js_expressions="""
+            new Promise((resolve) => {
+                if (!('geolocation' in navigator)) { resolve(null); return; }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                    (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+                );
+            })
+            """,
+            key="get_location_once",
+        )
+    
+        supervisor = st.text_input("Supervisor de Loja")
+        regional = "Regional Ex"
+        coordenador = "Coordenador Ex"
+        loja = "Loja Ex"
+    
+        # Botão gerar PDF
+        from datetime import datetime
+        if st.button("📄 Gerar PDF do Checklist"):
+            agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            latitude = localizacao.get("latitude") if localizacao else None
+            longitude = localizacao.get("longitude") if localizacao else None
+            precisao = localizacao.get("accuracy") if localizacao else None
+    
+            pdf_buffer = gerar_pdf_checklist(
+                agora=agora,
+                regional=regional,
+                coordenador=coordenador,
+                loja=loja,
+                supervisor=supervisor,
+                latitude=latitude,
+                longitude=longitude,
+                precisao=precisao,
+                perguntas=perguntas,
+                respostas=respostas,
             )
-        
-            supervisor = st.text_input("Supervisor de Loja")
-            regional = "Regional Ex"
-            coordenador = "Coordenador Ex"
-            loja = "Loja Ex"
-        
-            # Botão gerar PDF
-            from datetime import datetime
-            if st.button("📄 Gerar PDF do Checklist"):
-                agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                latitude = localizacao.get("latitude") if localizacao else None
-                longitude = localizacao.get("longitude") if localizacao else None
-                precisao = localizacao.get("accuracy") if localizacao else None
-        
-                pdf_buffer = gerar_pdf_checklist(
-                    agora=agora,
-                    regional=regional,
-                    coordenador=coordenador,
-                    loja=loja,
-                    supervisor=supervisor,
-                    latitude=latitude,
-                    longitude=longitude,
-                    precisao=precisao,
-                    perguntas=perguntas,
-                    respostas=respostas,
-                )
-                st.download_button(
-                    label="⬇️ Baixar PDF",
-                    data=pdf_buffer,
-                    file_name=f"Checklist_{loja.replace(' ', '_')}_{agora.replace('/', '-').replace(' ', '_')}.pdf",
-                    mime="application/pdf",
-                )
-        
-            st.info(
-                "O checklist permanece apenas para consulta e não pode ser alterado. "
-                "Para ajustes de visitas ou agendamentos, utilize a aba de **Roteiro**."
+            st.download_button(
+                label="⬇️ Baixar PDF",
+                data=pdf_buffer,
+                file_name=f"Checklist_{loja.replace(' ', '_')}_{agora.replace('/', '-').replace(' ', '_')}.pdf",
+                mime="application/pdf",
             )
+    
+        st.info(
+            "O checklist permanece apenas para consulta e não pode ser alterado. "
+            "Para ajustes de visitas ou agendamentos, utilize a aba de **Roteiro**."
+        )
