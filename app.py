@@ -671,49 +671,37 @@ with tab_roteiro:
         if st.button("Próxima semana ▶️"):
             st.session_state["rot_week_start"] += timedelta(days=7)
             st.rerun()
-# ============================================================
-# CHECKLIST
-# ============================================================
-# ============================================================
-# CHECKLIST
-# ============================================================
 
-with tab_checklist:
-    render_checklist()
+#=============================
+# HIERAQUIA
+#===========================
 
-    st.title("Check-list de Acompanhamento")
-    st.subheader("Identificação")
 
-    # =====================
-    # HIERARQUIA ORIGINAL
-    # =====================
-    regional = st.selectbox(
-        "Regional",
-        options=["Selecione"] + list(hierarquia.keys())
-    )
+def render_checklist():
 
-    coordenador = "Selecione"
-    loja = "Selecione"
+    st.subheader("Checklist de Acompanhamento")
 
-    if regional != "Selecione":
-        coordenador = st.selectbox(
-            "Coordenador",
-            options=["Selecione"] + list(hierarquia[regional].keys())
-        )
+    # =========================
+    # HIERARQUIA
+    # =========================
+    regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
+    regional = st.selectbox("Regional", regionais)
 
-    if coordenador != "Selecione":
-        loja = st.selectbox(
-            "Loja",
-            options=["Selecione"] + hierarquia[regional][coordenador]
-        )
+    _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional, "Selecione")
+    coordenador = st.selectbox("Coordenador", coordenadores)
+
+    _, _, lojas = get_opcoes_hierarquia(hierarquia, regional, coordenador)
+    loja = st.selectbox("Loja", lojas)
 
     supervisor = st.text_input("Supervisor de Loja")
 
     st.divider()
 
-    # =====================
-    # GEOLOCALIZAÇÃO ORIGINAL
-    # =====================
+    # =========================
+    # GEOLOCALIZAÇÃO
+    # =========================
+    from streamlit_js_eval import streamlit_js_eval
+
     localizacao = streamlit_js_eval(
         js_expressions="""
         new Promise((resolve) => {
@@ -741,80 +729,77 @@ with tab_checklist:
 
     if isinstance(localizacao, dict) and localizacao.get("error"):
         st.warning(
-            "Não foi possível obter a localização necessária. "
-            "Habilite a permissão e atualize a página.\n\n"
+            "Não foi possível obter a localização. "
+            "Habilite a permissão no navegador e atualize a página.\n\n"
             f"Detalhe: {localizacao.get('message', '')}"
         )
 
-    # =====================
-    # PERGUNTAS ORIGINAIS (100% IGUAL)
-    # =====================
+    # =========================
+    # PERGUNTAS
+    # =========================
     st.subheader("Perguntas")
 
     perguntas = [
-        "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
+        "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e compartilha os resultados?",
         "02. Aplica o CLAV semanalmente com base em evidências",
-        "03. Aplica e mantem atualizado o diagnóstico do colaborador, usando as informações de maneira estratégica",
+        "03. Mantém diagnóstico do colaborador atualizado",
         "04. Realiza microtreinamentos com a equipe",
         "05. Está presente corrigindo execuções em tempo real",
-        "06. Utiliza o Teatro de Vendas e Aplica dinâmicas rápidas e criativas durante o dia",
-        "07. Aplica Feedback SAR com frequência",
-        "08. Supervisor consegue ser claro quanto as evidências de aplicação que serão verificadas nos próximos atendimentos/dias.",
-        "09. A equipe domina técnica de pesquisa (perguntas abertas e SPIN)",
-        "10. A equipe sabe destacar vantagens e benefícios dos produtos comercializados",
-        "11. A equipe sabe destacar as vantagens e benefícios da empresa para o cliente",
-        "12. A equipe em loja possui total domínio nas técnicas de neutralização de objeções",
-        "13. A equipe em loja tem habilidade necessária para realizar o cross de todos os produtos",
-        "14. Os Consultores pedem indicação ao final do atendimento",
-        "15. Os Consultores seguem os passos da jornada",
+        "06. Utiliza Teatro de Vendas e dinâmicas",
+        "07. Aplica Feedback SAR",
+        "08. Define evidências claras para acompanhamento",
+        "09. Equipe domina técnica de pesquisa (SPIN)",
+        "10. Destaca benefícios dos produtos",
+        "11. Destaca benefícios da empresa",
+        "12. Neutraliza objeções corretamente",
+        "13. Realiza cross-sell de produtos",
+        "14. Pede indicação ao final do atendimento",
+        "15. Segue jornada de vendas",
         "16. Reconhece avanços da equipe",
-        "17. Utiliza linguagem positiva e motivadora",
-        "18. Supervisor conhece sonhos e objetivos de cada colaborador",
-        "19. Acompanha indicadores técnicos semanalmente (ATIVA)",
-        "20. Analisa comportamento da equipe com base em dados",
-        "21. Garante que o que foi treinado esteja sendo aplicado",
-        "22. Faz reuniões 1:1 com os consultores semanalmente",
-        "23. Atualiza e utiliza o PDI individual",
-        "24. Supervisor tem ciência de todas as pendências",
-        "25. Consultores sabem sua meta diária",
-        "26. Controle de agendamentos",
+        "17. Usa linguagem positiva",
+        "18. Conhece objetivos da equipe",
+        "19. Acompanha indicadores técnicos",
+        "20. Analisa comportamento com dados",
+        "21. Garante aplicação do treinamento",
+        "22. Realiza reuniões 1:1",
+        "23. Atualiza e usa PDI",
+        "24. Controla pendências de contrato",
+        "25. Equipe conhece metas",
+        "26. Controla agendamentos",
         "27. Domínio dos sistemas",
         "28. Boa apresentação pessoal",
-        "29. Controle de rodízio",
+        "29. Controla rodízio da equipe",
         "30. Acompanha comunicados internos",
         "31. Trata não pagamento",
         "32. Atua sobre portabilidade",
         "33. Conhece carteira de clientes",
-        "34. Gestão de horas extras",
-        "35. Assiduidade",
-        "36. Chamados abertos"
+        "34. Controla horas extras",
+        "35. Equipe é assídua",
+        "36. Chamados estão abertos"
     ]
 
-    # =====================
-    # FORM ORIGINAL
-    # =====================
+    # =========================
+    # FORM
+    # =========================
     with st.form("checklist_form"):
 
         respostas = []
 
         for i, pergunta in enumerate(perguntas, start=1):
 
+            # Seções
             if i == 1:
                 st.subheader("AVALIAR")
             elif i == 4:
                 st.subheader("TREINAR")
             elif i == 9:
-                st.subheader("DOMÍNIO DE METODO POR PARTE DA EQUIPE")
+                st.subheader("DOMÍNIO DA EQUIPE")
             elif i == 16:
                 st.subheader("INCENTIVAR")
             elif i == 19:
                 st.subheader("VERIFICAR")
             elif i == 22:
                 st.subheader("ACOMPANHAR")
-            elif i == 26:
-                st.subheader("ACOMPANHAMENTO - OPERAÇÃO")
-            elif i == 37:
-                st.subheader("ACOMPANHAMENTO - ESTRUTURA")
 
             resposta = st.radio(
                 pergunta,
@@ -828,20 +813,23 @@ with tab_checklist:
         st.divider()
 
         confirmar_localizacao = st.checkbox(
-            "Autorizo a captura da minha localização para envio do checklist"
+            "Autorizo a captura da minha localização"
         )
 
         enviar = st.form_submit_button("Enviar Checklist")
 
+        # =========================
+        # SUBMIT
+        # =========================
         if enviar:
 
             if not confirmar_localizacao:
-                st.error("Você precisa autorizar a localização.")
-                st.stop()
+                st.error("Autorize a localização para enviar.")
+                return
 
             if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
                 st.error("Erro ao capturar localização.")
-                st.stop()
+                return
 
             if (
                 regional == "Selecione"
@@ -850,7 +838,7 @@ with tab_checklist:
                 or not supervisor.strip()
             ):
                 st.error("Preencha todos os campos.")
-                st.stop()
+                return
 
             agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -870,10 +858,10 @@ with tab_checklist:
                 ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
                 append_with_retry(ws, linha)
 
-                st.success("Checklist enviado com sucesso ✅")
+                st.success("Checklist enviado ✅")
 
             except Exception as e:
-                st.error("Erro ao salvar")
+                st.error("Erro ao salvar no Google Sheets")
                 st.exception(e)
 
 
