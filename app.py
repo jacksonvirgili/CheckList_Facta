@@ -646,10 +646,6 @@ with tab_roteiro:
                             st.error("Erro ao salvar")
                             st.exception(e)
     
-                    if box.button("Remover", key=f"rm_{dia_iso}"):
-                        st.session_state["rot_agendamentos"].pop(dia_iso, None)
-                        st.rerun()
-    
                 else:
                     box.button("Agendar", disabled=True, key=f"ag_dis_{dia_iso}")
     
