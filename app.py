@@ -975,8 +975,8 @@ def gerar_pdf_checklist(
 # =========================
 
 with tab_checklist:
+    
     col1, col2, col3 = st.columns([1, 3, 1])
-
     with col2:
         st.subheader("Checklist de Acompanhamento")
 
