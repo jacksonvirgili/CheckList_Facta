@@ -935,73 +935,73 @@ with tab_checklist:
     # =========================
     # CENTRALIZANDO O FORMULÁRIO
     # =========================
-        with st.form("checklist_form"):
-            respostas = []
+    with st.form("checklist_form"):
+        respostas = []
 
-            for i, pergunta in enumerate(perguntas, start=1):
+        for i, pergunta in enumerate(perguntas, start=1):
 
-                # Seções
-                if i == 1:
-                    st.subheader("AVALIAR")
-                elif i == 4:
-                    st.subheader("TREINAR")
-                elif i == 9:
-                    st.subheader("DOMÍNIO DA EQUIPE")
-                elif i == 16:
-                    st.subheader("INCENTIVAR")
-                elif i == 19:
-                    st.subheader("VERIFICAR")
-                elif i == 22:
-                    st.subheader("ACOMPANHAR")
+            # Seções
+            if i == 1:
+                st.subheader("AVALIAR")
+            elif i == 4:
+                st.subheader("TREINAR")
+            elif i == 9:
+                st.subheader("DOMÍNIO DA EQUIPE")
+            elif i == 16:
+                st.subheader("INCENTIVAR")
+            elif i == 19:
+                st.subheader("VERIFICAR")
+            elif i == 22:
+                st.subheader("ACOMPANHAR")
 
-                resposta = st.radio(
-                    pergunta,
-                    ["Sim", "Não"],
-                    horizontal=True,
-                    key=f"q{i}"
-                )
-                respostas.append(resposta)
+            resposta = st.radio(
+                pergunta,
+                ["Sim", "Não"],
+                horizontal=True,
+                key=f"q{i}"
+            )
+            respostas.append(resposta)
 
-            st.divider()
+        st.divider()
 
-            confirmar_localizacao = st.checkbox("Autorizo a captura da minha localização")
+        confirmar_localizacao = st.checkbox("Autorizo a captura da minha localização")
 
-            enviar = st.form_submit_button("Enviar Checklist")
+        enviar = st.form_submit_button("Enviar Checklist")
 
-            # =========================
-            # SUBMIT
-            # =========================
-            if enviar:
+        # =========================
+        # SUBMIT
+        # =========================
+        if enviar:
 
-                if not confirmar_localizacao:
-                    st.error("Autorize a localização para enviar.")
-                elif not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
-                    st.error("Erro ao capturar localização.")
-                elif (
-                    regional == "Selecione"
-                    or coordenador == "Selecione"
-                    or loja == "Selecione"
-                    or not supervisor.strip()
-                ):
-                    st.error("Preencha todos os campos.")
-                else:
-                    agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
-                    linha = [
-                        agora,
-                        regional,
-                        coordenador,
-                        loja,
-                        supervisor,
-                        localizacao["latitude"],
-                        localizacao["longitude"],
-                        localizacao["accuracy"],
-                        *respostas
-                    ]
+            if not confirmar_localizacao:
+                st.error("Autorize a localização para enviar.")
+            elif not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
+                st.error("Erro ao capturar localização.")
+            elif (
+                regional == "Selecione"
+                or coordenador == "Selecione"
+                or loja == "Selecione"
+                or not supervisor.strip()
+            ):
+                st.error("Preencha todos os campos.")
+            else:
+                agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+                linha = [
+                    agora,
+                    regional,
+                    coordenador,
+                    loja,
+                    supervisor,
+                    localizacao["latitude"],
+                    localizacao["longitude"],
+                    localizacao["accuracy"],
+                    *respostas
+                ]
 
-                    try:
-                        ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
-                        append_with_retry(ws, linha)
-                        st.success("Checklist enviado ✅")
-                    except Exception as e:
-                        st.error("Erro ao salvar no Google Sheets")
-                        st.exception(e)
+                try:
+                    ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
+                    append_with_retry(ws, linha)
+                    st.success("Checklist enviado ✅")
+                except Exception as e:
+                    st.error("Erro ao salvar no Google Sheets")
+                    st.exception(e)
