@@ -1039,7 +1039,7 @@ with tab_checklist:
     #===========================
     # PERGUNTAS
     #===========================
-    st.subheader(""Perguntas)
+    st.subheader("Perguntas")
 
     perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
