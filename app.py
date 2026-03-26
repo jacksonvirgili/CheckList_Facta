@@ -686,14 +686,14 @@ with tab_checklist:
             "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
         ]
 
-      respostas = []
+        respostas = []
         for idx, pergunta in enumerate(perguntas, start=1):
             opcoes = ["", "Sim", "Não"]
             resposta = st.selectbox(pergunta, opcoes, key=f"resp_{idx}")
             respostas.append(resposta)
-    
+        
         st.divider()
-    
+        
         # Geolocalização
         localizacao = streamlit_js_eval(
             js_expressions="""
@@ -708,12 +708,12 @@ with tab_checklist:
             """,
             key="get_location_once",
         )
-    
+        
         supervisor = st.text_input("Supervisor de Loja")
         regional = "Regional Ex"
         coordenador = "Coordenador Ex"
         loja = "Loja Ex"
-    
+        
         # Botão gerar PDF
         from datetime import datetime
         if st.button("📄 Gerar PDF do Checklist"):
@@ -721,7 +721,7 @@ with tab_checklist:
             latitude = localizacao.get("latitude") if localizacao else None
             longitude = localizacao.get("longitude") if localizacao else None
             precisao = localizacao.get("accuracy") if localizacao else None
-    
+        
             pdf_buffer = gerar_pdf_checklist(
                 agora=agora,
                 regional=regional,
@@ -740,7 +740,7 @@ with tab_checklist:
                 file_name=f"Checklist_{loja.replace(' ', '_')}_{agora.replace('/', '-').replace(' ', '_')}.pdf",
                 mime="application/pdf",
             )
-    
+        
         st.info(
             "O checklist permanece apenas para consulta e não pode ser alterado. "
             "Para ajustes de visitas ou agendamentos, utilize a aba de **Roteiro**."
