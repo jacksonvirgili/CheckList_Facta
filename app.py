@@ -516,17 +516,17 @@ with tab_roteiro:
     # =========================
     # SEMANA
     # =========================
-    hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+        hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
-    if "rot_week_start" not in st.session_state:
-        st.session_state["rot_week_start"] = proximo_domingo(hoje)
-
-    week_start = st.session_state["rot_week_start"]
-    week_days = [week_start + timedelta(days=i) for i in range(7)]
-
-    st.markdown(
-        f"**Semana de {week_start.strftime('%d/%m/%Y')} até {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}**"
-    )
+        if "rot_week_start" not in st.session_state:
+            st.session_state["rot_week_start"] = proximo_domingo(hoje)
+    
+        week_start = st.session_state["rot_week_start"]
+        week_days = [week_start + timedelta(days=i) for i in range(7)]
+    
+        st.markdown(
+            f"**Semana de {week_start.strftime('%d/%m/%Y')} até {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}**"
+        )
 
     # =========================
     # FERIADOS
