@@ -698,8 +698,6 @@ with tab_checklist:
     # =========================
     # GEOLOCALIZAÇÃO
     # =========================
-    from streamlit_js_eval import streamlit_js_eval
-
     localizacao = streamlit_js_eval(
         js_expressions="""
         new Promise((resolve) => {
@@ -736,45 +734,7 @@ with tab_checklist:
     # PERGUNTAS
     # =========================
     st.subheader("Perguntas")
-
-    perguntas = [
-        "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e compartilha os resultados?",
-        "02. Aplica o CLAV semanalmente com base em evidências",
-        "03. Mantém diagnóstico do colaborador atualizado",
-        "04. Realiza microtreinamentos com a equipe",
-        "05. Está presente corrigindo execuções em tempo real",
-        "06. Utiliza Teatro de Vendas e dinâmicas",
-        "07. Aplica Feedback SAR",
-        "08. Define evidências claras para acompanhamento",
-        "09. Equipe domina técnica de pesquisa (SPIN)",
-        "10. Destaca benefícios dos produtos",
-        "11. Destaca benefícios da empresa",
-        "12. Neutraliza objeções corretamente",
-        "13. Realiza cross-sell de produtos",
-        "14. Pede indicação ao final do atendimento",
-        "15. Segue jornada de vendas",
-        "16. Reconhece avanços da equipe",
-        "17. Usa linguagem positiva",
-        "18. Conhece objetivos da equipe",
-        "19. Acompanha indicadores técnicos",
-        "20. Analisa comportamento com dados",
-        "21. Garante aplicação do treinamento",
-        "22. Realiza reuniões 1:1",
-        "23. Atualiza e usa PDI",
-        "24. Controla pendências de contrato",
-        "25. Equipe conhece metas",
-        "26. Controla agendamentos",
-        "27. Domínio dos sistemas",
-        "28. Boa apresentação pessoal",
-        "29. Controla rodízio da equipe",
-        "30. Acompanha comunicados internos",
-        "31. Trata não pagamento",
-        "32. Atua sobre portabilidade",
-        "33. Conhece carteira de clientes",
-        "34. Controla horas extras",
-        "35. Equipe é assídua",
-        "36. Chamados estão abertos"
-    ]
+    perguntas = [...]  # sua lista completa de 36 perguntas
 
     # =========================
     # FORMULÁRIO
@@ -782,22 +742,14 @@ with tab_checklist:
     with st.form("checklist_form"):
 
         respostas = []
-
         for i, pergunta in enumerate(perguntas, start=1):
 
-            # Seções
-            if i == 1:
-                st.subheader("AVALIAR")
-            elif i == 4:
-                st.subheader("TREINAR")
-            elif i == 9:
-                st.subheader("DOMÍNIO DA EQUIPE")
-            elif i == 16:
-                st.subheader("INCENTIVAR")
-            elif i == 19:
-                st.subheader("VERIFICAR")
-            elif i == 22:
-                st.subheader("ACOMPANHAR")
+            if i == 1: st.subheader("AVALIAR")
+            elif i == 4: st.subheader("TREINAR")
+            elif i == 9: st.subheader("DOMÍNIO DA EQUIPE")
+            elif i == 16: st.subheader("INCENTIVAR")
+            elif i == 19: st.subheader("VERIFICAR")
+            elif i == 22: st.subheader("ACOMPANHAR")
 
             resposta = st.radio(
                 pergunta,
@@ -813,9 +765,6 @@ with tab_checklist:
 
         enviar = st.form_submit_button("Enviar Checklist")
 
-        # =========================
-        # SUBMIT
-        # =========================
         if enviar:
 
             if not confirmar_localizacao:
@@ -851,3 +800,46 @@ with tab_checklist:
                     st.error("Erro ao salvar no Google Sheets")
                     st.exception(e)
 
+                # =========================
+                # GERAR PDF
+                # =========================
+                try:
+                    pdf_buffer = gerar_pdf_checklist(
+                        agora=agora,
+                        regional=regional,
+                        coordenador=coordenador,
+                        loja=loja,
+                        supervisor=supervisor,
+                        latitude=localizacao["latitude"],
+                        longitude=localizacao["longitude"],
+                        precisao=localizacao["accuracy"],
+                        perguntas=perguntas,
+                        respostas=respostas
+                    )
+                    st.session_state["pdf_bytes"] = pdf_buffer.getvalue()
+                    st.session_state["pdf_name"] = f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf"
+                    st.session_state["just_submitted"] = True
+                except Exception as e:
+                    st.error("Erro ao gerar o PDF")
+                    st.exception(e)
+
+    # =========================
+    # BOTÃO DE DOWNLOAD DO PDF (fora do form)
+    # =========================
+    if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
+        st.download_button(
+            label="📄 Baixar PDF do checklist",
+            data=st.session_state["pdf_bytes"],
+            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
+            mime="application/pdf",
+            key="download_pdf_checklist"
+        )
+        st.session_state["just_submitted"] = False
+    elif st.session_state.get("pdf_bytes"):
+        st.download_button(
+            label="📄 Baixar PDF do último envio",
+            data=st.session_state["pdf_bytes"],
+            file_name=st.session_state.get("pdf_name", "checklist.pdf"),
+            mime="application/pdf",
+            key="download_pdf_last"
+        )
