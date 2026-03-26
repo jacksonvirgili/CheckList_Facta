@@ -18,6 +18,21 @@ st.set_page_config(page_title="CheckList Gerencial Facta", layout="wide")
 SHEET_ID = "11JaCc4y-htBW-cxbvbMBV28GHYlORbMM6345TSaXcgQ"
 NOME_ABA = "Respostas"
 NOME_ABA_ROTEIROS = "Roteiros"
+
+# ------------------------------------------------------------
+# GOOGLE SHEETS
+# ------------------------------------------------------------
+scope = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+credentials = Credentials.from_service_account_info(
+    dict(st.secrets["gcp_service_account"]),
+    scopes=scope
+)
+
+gc = gspread.authorize(credentials)
 # --------------------
 # SHEETS HELPERS
 # ------------------------------------------------------------
