@@ -513,9 +513,9 @@ with tab_roteiro:
         st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
     else:
 
-    # =========================
-    # SEMANA
-    # =========================
+        # =========================
+        # SEMANA
+        # =========================
         hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
         if "rot_week_start" not in st.session_state:
