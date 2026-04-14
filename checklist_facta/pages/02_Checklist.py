@@ -333,7 +333,8 @@ def gerar_pdf_checklist(
 st.title("Check-list de Acompanhamento")
 st.subheader("Identificação")
 
-from checklist_facta.utils import hierarquia, get_opcoes_hierarquia
+# Hierarquia
+from utils import hierarquia, get_opcoes_hierarquia
 
 # ===== SELECTS FORA DO FORM =====
 regional = st.selectbox(
