@@ -3,6 +3,7 @@ import time
 from io import BytesIO
 from datetime import datetime, timedelta, date as _date
 from zoneinfo import ZoneInfo
+import streamlit.runtime.scriptrunner as srs
 
 import streamlit as st
 import gspread
@@ -45,6 +46,13 @@ gc = gspread.authorize(credentials)
 # =============================
 # GOOGLE SHEETS HELPERS
 # =============================
+def _handle_message():
+    import streamlit as st
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+    ctx = get_script_run_ctx()
+    if ctx and ctx.streamlit_file_ctx.enqueue_frontend_message:
+        pass
+
 def get_worksheet(gc_client, sheet_id: str, tab_name: str):
     try:
         sh = gc_client.open_by_key(sheet_id)
@@ -771,63 +779,63 @@ with tab_checklist:
 
     st.divider()
     
-# =====================
-# LOCALIZAÇÃO (AÇÃO EXPLÍCITA – ÚNICA FORMA CONFIÁVEL)
-# =====================
+    # =====================
+    # LOCALIZAÇÃO (AÇÃO EXPLÍCITA – ÚNICA FORMA CONFIÁVEL)
+    # =====================
+    import streamlit.components.v1 as components
+    
     st.markdown("### 📍 Localização")
     
     if "chk_localizacao" not in st.session_state:
         st.session_state["chk_localizacao"] = None
     
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        capturar_localizacao = st.button("📍 Capturar localização")
-    
-    with col2:
-        if st.session_state["chk_localizacao"]:
-            st.success("Localização capturada ✅")
-        else:
-            st.info("Clique em **Capturar localização** antes de enviar o checklist.")
-    
-    if capturar_localizacao:
-        st.session_state["chk_localizacao"] = streamlit_js_eval(
-            js_expressions="""
-            new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    resolve({ error: true, message: "Geolocalização não suportada" });
-                    return;
-                }
-    
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => resolve({
+    if st.button("📍 Capturar localização"):
+        components.html(
+            """
+            <script>
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const data = {
                         latitude: pos.coords.latitude,
                         longitude: pos.coords.longitude,
                         accuracy: pos.coords.accuracy
-                    }),
-                    (err) => resolve({
-                        error: true,
-                        message: err.message || "Erro ao obter localização"
-                    }),
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 0
-                    }
-                );
-            })
+                    };
+                    window.parent.postMessage({ type: "LOCALIZACAO", data: data }, "*");
+                },
+                function(err) {
+                    window.parent.postMessage({ 
+                        type: "LOCALIZACAO_ERROR", 
+                        message: err.message 
+                    }, "*");
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+            </script>
             """,
-            key="get_location_manual"
+            height=0
         )
     
-    localizacao = st.session_state["chk_localizacao"]
-
-    # Aviso amigável (igual ao original)
-    if isinstance(localizacao, dict) and localizacao.get("error"):
-        st.warning(
-            "Não foi possível obter a localização necessária. "
-            "Antes de iniciar o preenchimento, habilite as permissões de localização para este site e atualize a página."
-        )
+    # Captura retorno do JS
+    if "STREAMLIT_EVENT" not in st.session_state:
+        st.session_state["STREAMLIT_EVENT"] = None
+    
+    event = st.session_state.get("STREAMLIT_EVENT")
+    
+    if event and event.get("type") == "LOCALIZACAO":
+        st.session_state["chk_localizacao"] = event["data"]
+    
+    elif event and event.get("type") == "LOCALIZACAO_ERROR":
+        st.error(f"Erro ao capturar localização: {event['message']}")
+    
+    # Feedback visual
+    if st.session_state["chk_localizacao"]:
+        st.success("Localização capturada ✅")
+    else:
+        st.info("Clique em **Capturar localização** antes de enviar.")
 
     # =====================
     # FORMULÁRIO
@@ -914,22 +922,25 @@ with tab_checklist:
         enviar = st.form_submit_button("Enviar Checklist")
 
         if enviar:
-
+        
             if not confirmar_localizacao:
                 st.error("Você precisa autorizar a captura da localização para enviar.")
                 st.stop()
-
-            if not isinstance(localizacao, dict) or localizacao.get("error"):
+        
+            # ✅ LOCALIZAÇÃO – NOVA FONTE
+            localizacao = st.session_state.get("chk_localizacao")
+        
+            if not localizacao:
                 st.error(
-                    "Não foi possível capturar sua localização. "
-                    "Verifique as permissões do navegador e atualize a página."
+                    "Localização não capturada. "
+                    "Clique em **Capturar localização** antes de enviar o checklist."
                 )
                 st.stop()
-
+        
             latitude = localizacao["latitude"]
             longitude = localizacao["longitude"]
             precisao = localizacao["accuracy"]
-
+        
             if (
                 regional == "Selecione"
                 or coordenador == "Selecione"
@@ -938,11 +949,11 @@ with tab_checklist:
             ):
                 st.error("Preencha todos os campos obrigatórios antes de enviar.")
                 st.stop()
-
+        
             agora = datetime.now(
                 ZoneInfo("America/Sao_Paulo")
             ).strftime("%Y-%m-%d %H:%M:%S")
-
+        
             ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
             append_with_retry(
                 ws,
@@ -958,7 +969,7 @@ with tab_checklist:
                     *respostas
                 ]
             )
-
+        
             pdf_buffer = gerar_pdf_checklist(
                 agora=agora,
                 regional=regional,
@@ -971,7 +982,7 @@ with tab_checklist:
                 perguntas=perguntas,
                 respostas=respostas
             )
-
+        
             st.success("Checklist enviado com sucesso ✅")
             st.download_button(
                 "📄 Baixar PDF do checklist",
