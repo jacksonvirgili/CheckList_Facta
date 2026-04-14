@@ -477,41 +477,118 @@ with tab_roteiro:
         dias = [inicio + timedelta(days=i) for i in range(7)]
         feriados = feriados_br(inicio.year)
 
-        cols = st.columns(7)
-        labels = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]
+# =========================
+# CALENDÁRIO
+# =========================
 
-        for i, dia in enumerate(dias):
-            col = cols[i]
-            col.markdown(f"**{labels[i]} {dia.strftime('%d/%m')}**")
-
-            bloqueado = i in (0,6) or dia in feriados
+        cols_days = st.columns(7)
+        weekday_labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+        
+        for i, dia in enumerate(week_days):
+            box = cols_days[i]
+            dia_iso = dia.strftime("%Y-%m-%d")
+            dia_label = weekday_labels[i]
+        
+            is_weekend = i == 0 or i == 6
+            is_feriado = dia in feriados_map
+            bloqueado = is_weekend or is_feriado
+        
+            agendamento = st.session_state["rot_agendamentos"].get(dia_iso, {})
+            loja_valor = agendamento.get("loja", "Selecione")
+            obs_valor = agendamento.get("obs", "")
+        
+            border_color = "#F2A6A6" if bloqueado else "#DDD"
+            bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
+            text_color = "#C62828" if bloqueado else "#0A0A0A"
+        
+            box.markdown(
+                f"""
+                <div style="
+                    border:1.5px solid {border_color};
+                    background:{bg_color};
+                    border-radius:12px;
+                    padding:12px;
+                    min-height:190px;
+                ">
+                    <div style="
+                        text-align:center;
+                        font-weight:600;
+                        font-size:13px;
+                        margin-bottom:8px;
+                        color:{text_color};
+                    ">
+                        {dia_label} • {dia.strftime('%d/%m')}
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        
+            # ---- FERIADO / FIM DE SEMANA ----
             if bloqueado:
-                col.error("Bloqueado")
-                continue
-
-            loja = col.selectbox(
-                "Loja",
-                ["Selecione"] + lojas,
-                key=f"rot_loja_{dia}"
-            )
-            obs = col.text_area(
-                "Obs",
-                key=f"rot_obs_{dia}",
-                height=60
-            )
-
-            if loja != "Selecione":
-                if col.button("Agendar", key=f"rot_btn_{dia}"):
-                    salvar_roteiro([
-                        regional,
-                        coordenador,
-                        loja,
-                        "",
-                        dia.isoformat(),
-                        obs
-                    ])
-                    st.success("Agendado ✅")
-                    st.rerun()
+                if is_feriado:
+                    box.markdown(
+                        f"<div style='font-size:12px;color:{text_color};font-weight:500'>"
+                        f"{feriados_map[dia]}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    box.markdown(
+                        "<div style='font-size:12px;color:#C62828'>Fim de semana</div>",
+                        unsafe_allow_html=True,
+                    )
+        
+            # ---- DIA ÚTIL ----
+            else:
+                opcoes = ["Selecione"] + lojas_opcoes
+                index = opcoes.index(loja_valor) if loja_valor in opcoes else 0
+        
+                loja_escolhida = box.selectbox(
+                    "Loja",
+                    opcoes,
+                    index=index,
+                    key=f"loja_{dia_iso}",
+                    label_visibility="collapsed",
+                )
+        
+                obs = box.text_area(
+                    "Obs",
+                    value=obs_valor,
+                    key=f"obs_{dia_iso}",
+                    height=60,
+                    label_visibility="collapsed",
+                )
+        
+                if loja_escolhida != "Selecione":
+                    if box.button("Agendar", key=f"ag_{dia_iso}"):
+                        linha = [
+                            regional_r,
+                            coordenador_r,
+                            loja_escolhida,
+                            "",
+                            dia_iso,
+                            obs,
+                        ]
+                        try:
+                            salvar_roteiro(gc, SHEET_ID, linha)
+                            st.session_state["rot_agendamentos"][dia_iso] = {
+                                "loja": loja_escolhida,
+                                "obs": obs,
+                            }
+                            st.success("Agendado ✅")
+                            time.sleep(0.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erro ao salvar")
+                            st.exception(e)
+                else:
+                    box.button(
+                        "Agendar",
+                        disabled=True,
+                        key=f"ag_dis_{dia_iso}"
+                    )
+        
+            box.markdown("</div>", unsafe_allow_html=True)
 
         c1, c2 = st.columns(2)
         if c1.button("◀ Semana anterior"):
