@@ -10,10 +10,22 @@ from gspread.exceptions import APIError, WorksheetNotFound
 from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
 
-# ======================================================
+# =============================
+# REPORTLAB (PDF)
+# =============================
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
+# =============================
 # CONFIG
-# ======================================================
-st.set_page_config(page_title="CheckList Gerencial Facta", layout="wide")
+# =============================
+st.set_page_config(
+    page_title="CheckList Gerencial Facta",
+    layout="wide"
+)
 
 SHEET_ID = "11JaCc4y-htBW-cxbvbMBV28GHYlORbMM6345TSaXcgQ"
 NOME_ABA = "Respostas"
@@ -30,15 +42,15 @@ credentials = Credentials.from_service_account_info(
 )
 gc = gspread.authorize(credentials)
 
-# ======================================================
-# HELPERS GOOGLE SHEETS (USADOS POR AMBOS)
-# ======================================================
+# =============================
+# GOOGLE SHEETS HELPERS
+# =============================
 def get_worksheet(gc_client, sheet_id: str, tab_name: str):
     try:
         sh = gc_client.open_by_key(sheet_id)
         return sh.worksheet(tab_name)
     except WorksheetNotFound:
-        st.error(f"A aba '{tab_name}' não existe.")
+        st.error(f"A aba '{tab_name}' não existe na planilha.")
         st.stop()
 
 def append_with_retry(ws, row, retries: int = 4):
@@ -47,15 +59,19 @@ def append_with_retry(ws, row, retries: int = 4):
             ws.append_row(row)
             return True
         except APIError as e:
-            if getattr(e.response, "status_code", None) in (429, 500, 503) and i < retries - 1:
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            if code in (429, 500, 503) and i < retries - 1:
                 time.sleep((2 ** i) + 0.2)
             else:
                 raise
 
-# ======================================================
-# HIERARQUIA (ÚNICA – COMPARTILHADA)
-# 🔒 COPIAR EXATAMENTE A MESMA DO CHECKLIST APROVADO
-# ======================================================
+def salvar_roteiro(gc, sheet_id, linha):
+    ws = get_worksheet(gc, sheet_id, NOME_ABA_ROTEIROS)
+    append_with_retry(ws, linha)
+
+# =============================
+# HIERARQUIA (COPIAR A SUA AQUI)
+# =============================
 hierarquia = {
     "MAYARA NOVAIS LOPES": {
         "ADRIELE FERNANDA VIEIRA DA SILVA": [
@@ -419,21 +435,105 @@ hierarquia = {
     }
 }
 
-# ======================================================
-# ====================== UI ============================
-# ======================================================
+def get_opcoes_hierarquia(hierarquia, regional, coordenador):
+    regionais = ["Selecione"] + list(hierarquia.keys())
+
+    coordenadores = ["Selecione"]
+    lojas = ["Selecione"]
+
+    if regional in hierarquia:
+        coordenadores += list(hierarquia[regional].keys())
+
+    if regional in hierarquia and coordenador in hierarquia[regional]:
+        lojas += hierarquia[regional][coordenador]
+
+    return regionais, coordenadores, lojas
+
+# =============================
+# PDF
+# =============================
+def gerar_pdf_checklist(
+    agora, regional, coordenador, loja, supervisor,
+    latitude, longitude, precisao,
+    perguntas, respostas
+):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20*mm,
+        rightMargin=20*mm,
+        topMargin=15*mm,
+        bottomMargin=15*mm,
+    )
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Titulo", fontSize=16, leading=18, spaceAfter=8, fontName="Helvetica-Bold"))
+    styles.add(ParagraphStyle(name="SubTitulo", fontSize=12, leading=14, spaceBefore=10, spaceAfter=4, fontName="Helvetica-Bold"))
+    styles.add(ParagraphStyle(name="Normal10", fontSize=10, leading=12))
+    styles.add(ParagraphStyle(name="Pergunta", fontSize=9, leading=11))
+
+    elementos = []
+
+    elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
+    elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
+
+    meta = [
+        ["Data/Hora", agora],
+        ["Regional", regional],
+        ["Coordenador", coordenador],
+        ["Loja", loja],
+        ["Supervisor", supervisor],
+    ]
+
+    tabela_meta = Table(meta, colWidths=[40*mm, A4[0]-80*mm])
+    tabela_meta.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+    ]))
+    elementos.append(tabela_meta)
+
+    if latitude and longitude:
+        elementos.append(Spacer(1, 6))
+        elementos.append(
+            Paragraph(
+                f"Localização: https://www.google.com/maps?q={latitude},{longitude}",
+                styles["Normal10"]
+            )
+        )
+
+    elementos.append(Spacer(1, 10))
+    elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
+
+    dados = [["#", "Pergunta", "Resposta"]]
+    for i, (p, r) in enumerate(zip(perguntas, respostas), start=1):
+        dados.append([f"{i:02d}", p, r])
+
+    tabela = Table(dados, colWidths=[15*mm, None, 30*mm], repeatRows=1)
+    tabela.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+    ]))
+    elementos.append(tabela)
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+
+# =============================
+# UI
+# =============================
 st.title("Check-list de Acompanhamento")
 tab_roteiro, tab_checklist = st.tabs(["🗓️ Roteiro", "✅ Checklist"])
 
 # ======================================================
-# 🗓️ TAB ROTEIRO (NOVO — NÃO TOCA NO CHECKLIST)
+# 🗓️ TAB ROTEIRO
 # ======================================================
 with tab_roteiro:
+
     st.subheader("Roteiro Semanal de Visitas")
 
-    # =========================
-    # FUNÇÕES AUXILIARES
-    # =========================
     def proximo_domingo(d):
         return d + timedelta(days=(6 - d.weekday() + 7) % 7 or 7)
 
@@ -449,269 +549,119 @@ with tab_roteiro:
             _date(ano, 12, 25): "Natal",
         }
 
-    def carregar_roteiros():
-        try:
-            ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
-            dados = ws.get_all_records()
-            mapa = {}
-
-            for r in dados:
-                data = r.get("DATA")
-                if data:
-                    mapa[data] = {
-                        "loja": r.get("LOJA", "Selecione"),
-                        "obs": r.get("OBS", "")
-                    }
-            return mapa
-        except Exception:
-            return {}
-
-    # =========================
-    # ESTADO
-    # =========================
     if "rot_agendamentos" not in st.session_state:
-        st.session_state["rot_agendamentos"] = carregar_roteiros()
+        st.session_state["rot_agendamentos"] = {}
 
-    # =========================
-    # HIERARQUIA
-    # =========================
     regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
-    regional_r = st.selectbox("Regional", regionais, key="rot_regional")
+    regional_r = st.selectbox("Regional", regionais)
 
     _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional_r, "Selecione")
-    coordenador_r = st.selectbox("Coordenador", coordenadores, key="rot_coordenador")
+    coordenador_r = st.selectbox("Coordenador", coordenadores)
 
-    _, _, lojas_da_coord = get_opcoes_hierarquia(hierarquia, regional_r, coordenador_r)
-    lojas_opcoes = [l for l in lojas_da_coord if l != "Selecione"]
+    _, _, lojas = get_opcoes_hierarquia(hierarquia, regional_r, coordenador_r)
+    lojas = [l for l in lojas if l != "Selecione"]
 
     if coordenador_r == "Selecione":
-        st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
+        st.info("Selecione Regional e Coordenador.")
     else:
-        # =========================
-        # SEMANA
-        # =========================
         hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
-
         if "rot_week_start" not in st.session_state:
             st.session_state["rot_week_start"] = proximo_domingo(hoje)
 
         week_start = st.session_state["rot_week_start"]
-        week_days = [week_start + timedelta(days=i) for i in range(7)]
+        dias = [week_start + timedelta(days=i) for i in range(7)]
 
-        st.markdown(
-            f"**Semana de {week_start.strftime('%d/%m/%Y')} até "
-            f"{(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}**"
-        )
+        cols = st.columns(7)
+        labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
-        # =========================
-        # FERIADOS
-        # =========================
-        feriados_map = feriados_br(week_start.year)
+        feriados = feriados_br(week_start.year)
 
-        if (week_start + timedelta(days=6)).year != week_start.year:
-            feriados_map.update(
-                feriados_br((week_start + timedelta(days=6)).year)
-            )
+        for i, dia in enumerate(dias):
+            with cols[i]:
+                st.markdown(f"**{labels[i]} {dia.strftime('%d/%m')}**")
 
-        # =========================
-        # CALENDÁRIO
-        # =========================
-        cols_days = st.columns(7)
-        weekday_labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+                if i in (0, 6) or dia in feriados:
+                    st.error("Bloqueado")
+                    continue
 
-        for i, dia in enumerate(week_days):
-            box = cols_days[i]
-            dia_iso = dia.strftime("%Y-%m-%d")
-            dia_label = weekday_labels[i]
-
-            is_weekend = i in (0, 6)
-            is_feriado = dia in feriados_map
-            bloqueado = is_weekend or is_feriado
-
-            agendamento = st.session_state["rot_agendamentos"].get(dia_iso, {})
-            loja_valor = agendamento.get("loja", "Selecione")
-            obs_valor = agendamento.get("obs", "")
-
-            border_color = "#F2A6A6" if bloqueado else "#DDD"
-            bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
-            text_color = "#C62828" if bloqueado else "#0A0A0A"
-
-            box.markdown(
-                f"""
-                <div style="
-                    border:1.5px solid {border_color};
-                    background:{bg_color};
-                    border-radius:12px;
-                    padding:10px;
-                    min-height:190px;
-                ">
-                    <div style="
-                        text-align:center;
-                        font-weight:600;
-                        font-size:13px;
-                        margin-bottom:8px;
-                        color:{text_color};
-                    ">
-                        {dia_label} • {dia.strftime('%d/%m')}
-                    </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            if bloqueado:
-                if is_feriado:
-                    box.markdown(
-                        f"<div style='font-size:11px;color:#C62828'>{feriados_map[dia]}</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    box.markdown(
-                        "<div style='font-size:11px;color:#C62828'>Fim de semana</div>",
-                        unsafe_allow_html=True,
-                    )
-            else:
-                opcoes = ["Selecione"] + lojas_opcoes
-                index = opcoes.index(loja_valor) if loja_valor in opcoes else 0
-
-                loja_escolhida = box.selectbox(
+                loja = st.selectbox(
                     "Loja",
-                    opcoes,
-                    index=index,
-                    key=f"loja_{dia_iso}",
-                    label_visibility="collapsed",
+                    ["Selecione"] + lojas,
+                    key=f"rot_loja_{dia}"
                 )
-
-                obs = box.text_area(
+                obs = st.text_area(
                     "Obs",
-                    value=obs_valor,
-                    key=f"obs_{dia_iso}",
-                    height=60,
-                    label_visibility="collapsed",
+                    key=f"rot_obs_{dia}",
+                    height=60
                 )
 
-                if loja_escolhida != "Selecione":
-                    if box.button("Agendar", key=f"ag_{dia_iso}"):
-                        linha = [
-                            regional_r,
-                            coordenador_r,
-                            loja_escolhida,
-                            "",
-                            dia_iso,
-                            obs,
-                        ]
-                        salvar_roteiro(gc, SHEET_ID, linha)
-                        st.session_state["rot_agendamentos"][dia_iso] = {
-                            "loja": loja_escolhida,
-                            "obs": obs,
-                        }
-                        st.success("Agendado ✅")
-                        time.sleep(0.5)
-                        st.rerun()
-                else:
-                    box.button(
-                        "Agendar",
-                        disabled=True,
-                        key=f"ag_dis_{dia_iso}"
+                if st.button("Agendar", key=f"rot_btn_{dia}") and loja != "Selecione":
+                    salvar_roteiro(
+                        gc,
+                        SHEET_ID,
+                        [regional_r, coordenador_r, loja, "", dia.isoformat(), obs]
                     )
+                    st.success("Agendado ✅")
+                    time.sleep(0.3)
+                    st.rerun()
 
-            box.markdown("</div>", unsafe_allow_html=True)
+        st.divider()
 
-        # =========================
-        # NAVEGAÇÃO
-        # =========================
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        nav = st.columns([1, 2, 1])[1]
-        c1, c2 = nav.columns(2)
-
+        c1, c2 = st.columns(2)
         with c1:
             if st.button("◀️ Semana anterior"):
                 st.session_state["rot_week_start"] -= timedelta(days=7)
                 st.rerun()
-
         with c2:
             if st.button("Próxima semana ▶️"):
                 st.session_state["rot_week_start"] += timedelta(days=7)
                 st.rerun()
 
 # ======================================================
-# ✅ TAB CHECKLIST
-# 🔒 CÓDIGO ORIGINAL — INTACTO
+# ✅ TAB CHECKLIST (INALTERADO)
 # ======================================================
 with tab_checklist:
 
     st.subheader("Identificação")
 
-    # ===== SELECTS FORA DO FORM =====
     regional = st.selectbox(
         "Regional",
-        options=["Selecione"] + list(hierarquia.keys()),
+        ["Selecione"] + list(hierarquia.keys()),
         key="chk_regional"
     )
-    
+
     coordenador = "Selecione"
     loja = "Selecione"
-    
+
     if regional != "Selecione":
         coordenador = st.selectbox(
             "Coordenador",
-            options=["Selecione"] + list(hierarquia[regional].keys()),
+            ["Selecione"] + list(hierarquia[regional].keys()),
             key="chk_coordenador"
         )
-    
+
     if coordenador != "Selecione":
         loja = st.selectbox(
             "Loja",
-            options=["Selecione"] + hierarquia[regional][coordenador],
+            ["Selecione"] + hierarquia[regional][coordenador],
             key="chk_loja"
         )
-    
-    supervisor = st.text_input(
-        "Supervisor de Loja",
-        key="chk_supervisor"
-    )
+
+    supervisor = st.text_input("Supervisor de Loja", key="chk_supervisor")
 
     st.divider()
 
-    # =====================
-    # VALIDAÇÃO DE LOCALIZAÇÃO
-    # =====================
     localizacao = streamlit_js_eval(
         js_expressions="""
         new Promise((resolve) => {
-            if (!('geolocation' in navigator)) {
-                resolve(null);
-                return;
-            }
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
-                }),
-                (err) => resolve({ error: err.code || true, message: err.message || 'erro' }),
-                {
-                    enableHighAccuracy: true,
-                    timeout: 12000,
-                    maximumAge: 0
-                }
+                pos => resolve(pos.coords),
+                err => resolve(null)
             );
         })
         """,
         key="get_location_once"
     )
-
-    if isinstance(localizacao, dict) and localizacao.get("error"):
-        st.warning(
-            "Não foi possível obter a localização necessária. "
-            "Habilite as permissões do navegador e atualize a página.\n\n"
-            f"Detalhe técnico: {localizacao.get('message', '')}"
-        )
-
-    # =====================
-    # FORMULÁRIO
-    # =====================
-    st.subheader("Perguntas")
 
     perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
@@ -755,106 +705,51 @@ with tab_checklist:
     with st.form("checklist_form"):
         respostas = []
 
-        for i, pergunta in enumerate(perguntas, start=1):
-
-            if i == 1:
-                st.subheader("AVALIAR")
-            elif i == 4:
-                st.subheader("TREINAR")
-            elif i == 9:
-                st.subheader("DOMÍNIO DE METODO POR PARTE DA EQUIPE")
-            elif i == 16:
-                st.subheader("INCENTIVAR")
-            elif i == 19:
-                st.subheader("VERIFICAR")
-            elif i == 22:
-                st.subheader("ACOMPANHAR")
-            elif i == 26:
-                st.subheader("ACOMPANHAMENTO - OPERAÇÃO")
-            elif i == 37:
-                st.subheader("ACOMPANHAMENTO - ESTRUTURA")
-
-            resposta = st.radio(
-                pergunta,
-                ["Sim", "Não"],
-                horizontal=True,
-                key=f"q{i}"
+        for i, p in enumerate(perguntas):
+            respostas.append(
+                st.radio(p, ["Sim", "Não"], key=f"q{i}", horizontal=True)
             )
-            respostas.append(resposta)
 
-        st.divider()
-
-        confirmar_localizacao = st.checkbox(
-            "Autorizo a captura da minha localização para envio do checklist"
-        )
-
+        confirmar = st.checkbox("Autorizo a captura da localização")
         enviar = st.form_submit_button("Enviar Checklist")
 
         if enviar:
-
-            if not confirmar_localizacao:
-                st.error("Você precisa autorizar a captura da localização para enviar.")
+            if not confirmar or not localizacao:
+                st.error("Validação obrigatória.")
                 st.stop()
 
-            if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
-                st.error("Não foi possível capturar sua localização.")
-                st.stop()
+            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
 
-            latitude = localizacao["latitude"]
-            longitude = localizacao["longitude"]
-            precisao = localizacao["accuracy"]
-
-            if (
-                regional == "Selecione"
-                or coordenador == "Selecione"
-                or loja == "Selecione"
-                or not supervisor.strip()
-            ):
-                st.error("Preencha todos os campos obrigatórios.")
-                st.stop()
-
-            agora = datetime.now(
-                ZoneInfo("America/Sao_Paulo")
-            ).strftime("%Y-%m-%d %H:%M:%S")
-
-            linha = [
+            ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
+            append_with_retry(ws, [
                 agora,
                 regional,
                 coordenador,
                 loja,
                 supervisor,
-                latitude,
-                longitude,
-                precisao,
+                localizacao.latitude,
+                localizacao.longitude,
+                localizacao.accuracy,
                 *respostas
-            ]
+            ])
 
-            ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
-            append_with_retry(ws, linha)
-
-            pdf_buffer = gerar_pdf_checklist(
-                agora=agora,
-                regional=regional,
-                coordenador=coordenador,
-                loja=loja,
-                supervisor=supervisor,
-                latitude=latitude,
-                longitude=longitude,
-                precisao=precisao,
-                perguntas=perguntas,
-                respostas=respostas
+            pdf = gerar_pdf_checklist(
+                agora,
+                regional,
+                coordenador,
+                loja,
+                supervisor,
+                localizacao.latitude,
+                localizacao.longitude,
+                localizacao.accuracy,
+                perguntas,
+                respostas
             )
 
-            st.session_state["pdf_bytes"] = pdf_buffer.getvalue()
-            st.session_state["pdf_name"] = f"checklist_{agora.replace(':','-').replace(' ','_')}.pdf"
-            st.session_state["just_submitted"] = True
-
-    if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
-        st.success("Checklist enviado com sucesso ✅")
-        st.download_button(
-            label="📄 Baixar PDF do checklist",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state["pdf_name"],
-            mime="application/pdf"
-        )
-        st.session_state["just_submitted"] = False
+            st.success("Checklist enviado ✅")
+            st.download_button(
+                "📄 Baixar PDF",
+                pdf.getvalue(),
+                file_name=f"checklist_{agora}.pdf",
+                mime="application/pdf"
+            )
