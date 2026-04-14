@@ -740,12 +740,10 @@ with tab_checklist:
 
     st.subheader("Identificação")
 
-    # =====================
-    # SELETORES
-    # =====================
+    # ===== SELECTS FORA DO FORM =====
     regional = st.selectbox(
         "Regional",
-        ["Selecione"] + list(hierarquia.keys()),
+        options=["Selecione"] + list(hierarquia.keys()),
         key="chk_regional"
     )
 
@@ -755,14 +753,14 @@ with tab_checklist:
     if regional != "Selecione":
         coordenador = st.selectbox(
             "Coordenador",
-            ["Selecione"] + list(hierarquia[regional].keys()),
+            options=["Selecione"] + list(hierarquia[regional].keys()),
             key="chk_coordenador"
         )
 
     if coordenador != "Selecione":
         loja = st.selectbox(
             "Loja",
-            ["Selecione"] + hierarquia[regional][coordenador],
+            options=["Selecione"] + hierarquia[regional][coordenador],
             key="chk_loja"
         )
 
@@ -774,14 +772,14 @@ with tab_checklist:
     st.divider()
 
     # =====================
-    # LOCALIZAÇÃO (ROBUSTA)
+    # LOCALIZAÇÃO (AUTOMÁTICA + ESTÁVEL)
     # =====================
-    if "localizacao" not in st.session_state:
-        st.session_state["localizacao"] = streamlit_js_eval(
+    if "chk_localizacao" not in st.session_state:
+        st.session_state["chk_localizacao"] = streamlit_js_eval(
             js_expressions="""
             new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    resolve({ error: true, message: "Geolocalização não suportada" });
+                if (!('geolocation' in navigator)) {
+                    resolve({ error: true, message: 'Geolocalização não suportada' });
                     return;
                 }
 
@@ -793,7 +791,7 @@ with tab_checklist:
                     }),
                     (err) => resolve({
                         error: true,
-                        message: err.message || "Erro ao obter localização"
+                        message: err.message || 'Erro ao obter localização'
                     }),
                     {
                         enableHighAccuracy: true,
@@ -806,17 +804,20 @@ with tab_checklist:
             key="get_location_once"
         )
 
-    localizacao = st.session_state["localizacao"]
+    localizacao = st.session_state["chk_localizacao"]
 
+    # Aviso amigável (igual ao original)
     if isinstance(localizacao, dict) and localizacao.get("error"):
         st.warning(
-            "⚠️ Não foi possível capturar a localização automaticamente. "
-            "Verifique as permissões do navegador."
+            "Não foi possível obter a localização necessária. "
+            "Antes de iniciar o preenchimento, habilite as permissões de localização para este site e atualize a página."
         )
 
     # =====================
-    # PERGUNTAS
+    # FORMULÁRIO
     # =====================
+    st.subheader("Perguntas")
+
     perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
         "02. Aplica o CLAV semanalmente com base em evidências",
@@ -856,23 +857,41 @@ with tab_checklist:
         "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
     ]
 
-    # =====================
-    # FORMULÁRIO
-    # =====================
     with st.form("checklist_form"):
+
         respostas = []
 
-        for i, p in enumerate(perguntas):
-            respostas.append(
-                st.radio(
-                    p,
-                    ["Sim", "Não"],
-                    horizontal=True,
-                    key=f"q{i}"
-                )
-            )
+        for i, pergunta in enumerate(perguntas, start=1):
 
-        confirmar = st.checkbox(
+            # Títulos de seção (IGUAL AO ORIGINAL)
+            if i == 1:
+                st.subheader("AVALIAR")
+            elif i == 4:
+                st.subheader("TREINAR")
+            elif i == 9:
+                st.subheader("DOMÍNIO DE METODO POR PARTE DA EQUIPE")
+            elif i == 16:
+                st.subheader("INCENTIVAR")
+            elif i == 19:
+                st.subheader("VERIFICAR")
+            elif i == 22:
+                st.subheader("ACOMPANHAR")
+            elif i == 26:
+                st.subheader("ACOMPANHAMENTO - OPERAÇÃO")
+            elif i == 37:
+                st.subheader("ACOMPANHAMENTO - ESTRUTURA")
+
+            resposta = st.radio(
+                pergunta,
+                ["Sim", "Não"],
+                horizontal=True,
+                key=f"q{i}"
+            )
+            respostas.append(resposta)
+
+        st.divider()
+
+        confirmar_localizacao = st.checkbox(
             "Autorizo a captura da minha localização para envio do checklist"
         )
 
@@ -880,22 +899,29 @@ with tab_checklist:
 
         if enviar:
 
-            # 🔒 Valida autorização
-            if not confirmar:
-                st.error("Você precisa autorizar a captura da localização.")
+            if not confirmar_localizacao:
+                st.error("Você precisa autorizar a captura da localização para enviar.")
                 st.stop()
 
-            # 🔒 Valida localização capturada
             if not isinstance(localizacao, dict) or localizacao.get("error"):
                 st.error(
                     "Não foi possível capturar sua localização. "
-                    "Atualize a página e verifique as permissões do navegador."
+                    "Verifique as permissões do navegador e atualize a página."
                 )
                 st.stop()
 
             latitude = localizacao["latitude"]
             longitude = localizacao["longitude"]
             precisao = localizacao["accuracy"]
+
+            if (
+                regional == "Selecione"
+                or coordenador == "Selecione"
+                or loja == "Selecione"
+                or not supervisor.strip()
+            ):
+                st.error("Preencha todos os campos obrigatórios antes de enviar.")
+                st.stop()
 
             agora = datetime.now(
                 ZoneInfo("America/Sao_Paulo")
@@ -917,23 +943,23 @@ with tab_checklist:
                 ]
             )
 
-            pdf = gerar_pdf_checklist(
-                agora,
-                regional,
-                coordenador,
-                loja,
-                supervisor,
-                latitude,
-                longitude,
-                precisao,
-                perguntas,
-                respostas
+            pdf_buffer = gerar_pdf_checklist(
+                agora=agora,
+                regional=regional,
+                coordenador=coordenador,
+                loja=loja,
+                supervisor=supervisor,
+                latitude=latitude,
+                longitude=longitude,
+                precisao=precisao,
+                perguntas=perguntas,
+                respostas=respostas
             )
 
             st.success("Checklist enviado com sucesso ✅")
             st.download_button(
                 "📄 Baixar PDF do checklist",
-                data=pdf.getvalue(),
-                file_name=f"checklist_{agora.replace(':','-').replace(' ','_')}.pdf",
+                data=pdf_buffer.getvalue(),
+                file_name=f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf",
                 mime="application/pdf"
             )
