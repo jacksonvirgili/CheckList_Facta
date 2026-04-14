@@ -740,6 +740,9 @@ with tab_checklist:
 
     st.subheader("Identificação")
 
+    # =====================
+    # SELETORES
+    # =====================
     regional = st.selectbox(
         "Regional",
         ["Selecione"] + list(hierarquia.keys()),
@@ -763,22 +766,57 @@ with tab_checklist:
             key="chk_loja"
         )
 
-    supervisor = st.text_input("Supervisor de Loja", key="chk_supervisor")
+    supervisor = st.text_input(
+        "Supervisor de Loja",
+        key="chk_supervisor"
+    )
 
     st.divider()
 
-    localizacao = streamlit_js_eval(
-        js_expressions="""
-        new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-                pos => resolve(pos.coords),
-                err => resolve(null)
-            );
-        })
-        """,
-        key="get_location_once"
-    )
+    # =====================
+    # LOCALIZAÇÃO (ROBUSTA)
+    # =====================
+    if "localizacao" not in st.session_state:
+        st.session_state["localizacao"] = streamlit_js_eval(
+            js_expressions="""
+            new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    resolve({ error: true, message: "Geolocalização não suportada" });
+                    return;
+                }
 
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    }),
+                    (err) => resolve({
+                        error: true,
+                        message: err.message || "Erro ao obter localização"
+                    }),
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 12000,
+                        maximumAge: 0
+                    }
+                );
+            })
+            """,
+            key="get_location_once"
+        )
+
+    localizacao = st.session_state["localizacao"]
+
+    if isinstance(localizacao, dict) and localizacao.get("error"):
+        st.warning(
+            "⚠️ Não foi possível capturar a localização automaticamente. "
+            "Verifique as permissões do navegador."
+        )
+
+    # =====================
+    # PERGUNTAS
+    # =====================
     perguntas = [
         "01. Analisa os indicadores quantitativos diariamente D-1 e INTRADAY e Registra e compartilha os resultados com o consultor?",
         "02. Aplica o CLAV semanalmente com base em evidências",
@@ -818,40 +856,66 @@ with tab_checklist:
         "36. Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução."
     ]
 
+    # =====================
+    # FORMULÁRIO
+    # =====================
     with st.form("checklist_form"):
         respostas = []
 
         for i, p in enumerate(perguntas):
             respostas.append(
-                st.radio(p, ["Sim", "Não"], key=f"q{i}", horizontal=True)
+                st.radio(
+                    p,
+                    ["Sim", "Não"],
+                    horizontal=True,
+                    key=f"q{i}"
+                )
             )
 
-        confirmar = st.checkbox("Autorizo a captura da localização")
+        confirmar = st.checkbox(
+            "Autorizo a captura da minha localização para envio do checklist"
+        )
+
         enviar = st.form_submit_button("Enviar Checklist")
 
         if enviar:
+
+            # 🔒 Valida autorização
             if not confirmar:
-                st.error("Marque a autorização de localização.")
-                st.stop()
-        
-            if not localizacao:
-                st.error("Localização não capturada pelo navegador.")
+                st.error("Você precisa autorizar a captura da localização.")
                 st.stop()
 
-            agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
+            # 🔒 Valida localização capturada
+            if not isinstance(localizacao, dict) or localizacao.get("error"):
+                st.error(
+                    "Não foi possível capturar sua localização. "
+                    "Atualize a página e verifique as permissões do navegador."
+                )
+                st.stop()
+
+            latitude = localizacao["latitude"]
+            longitude = localizacao["longitude"]
+            precisao = localizacao["accuracy"]
+
+            agora = datetime.now(
+                ZoneInfo("America/Sao_Paulo")
+            ).strftime("%Y-%m-%d %H:%M:%S")
 
             ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
-            append_with_retry(ws, [
-                agora,
-                regional,
-                coordenador,
-                loja,
-                supervisor,
-                localizacao.latitude,
-                localizacao.longitude,
-                localizacao.accuracy,
-                *respostas
-            ])
+            append_with_retry(
+                ws,
+                [
+                    agora,
+                    regional,
+                    coordenador,
+                    loja,
+                    supervisor,
+                    latitude,
+                    longitude,
+                    precisao,
+                    *respostas
+                ]
+            )
 
             pdf = gerar_pdf_checklist(
                 agora,
@@ -859,17 +923,17 @@ with tab_checklist:
                 coordenador,
                 loja,
                 supervisor,
-                localizacao.latitude,
-                localizacao.longitude,
-                localizacao.accuracy,
+                latitude,
+                longitude,
+                precisao,
                 perguntas,
                 respostas
             )
 
-            st.success("Checklist enviado ✅")
+            st.success("Checklist enviado com sucesso ✅")
             st.download_button(
-                "📄 Baixar PDF",
-                pdf.getvalue(),
-                file_name=f"checklist_{agora}.pdf",
+                "📄 Baixar PDF do checklist",
+                data=pdf.getvalue(),
+                file_name=f"checklist_{agora.replace(':','-').replace(' ','_')}.pdf",
                 mime="application/pdf"
             )
