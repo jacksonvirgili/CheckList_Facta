@@ -57,7 +57,7 @@ def append_with_retry(ws, row, retries=4):
 # =====================
 # HIERARQUIA (COPIE A MESMA)
 # =====================
-from app import hierarquia, get_opcoes_hierarquia  # ✅ reaproveita do main
+from app import hierarquia, get_op
 
 # =====================
 # FUNÇÕES DE DATA
