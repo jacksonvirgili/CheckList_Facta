@@ -481,80 +481,80 @@ with tab_roteiro:
 # CALENDÁRIO
 # =========================
 
-cols = st.columns(7)
-labels = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]
-
-for i, dia in enumerate(dias):
-    col = cols[i]
-    iso = dia.isoformat()
-
-    is_weekend = i in (0, 6)
-    is_feriado = dia in feriados
-    bloqueado = is_weekend or is_feriado
-
-    border_color = "#F2A6A6" if bloqueado else "#DDD"
-    bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
-    text_color = "#C62828" if bloqueado else "#0A0A0A"
-
-    col.markdown(
-        f"""
-        <div style="
-            border:1.5px solid {border_color};
-            background:{bg_color};
-            border-radius:12px;
-            padding:12px;
-            min-height:190px;
-        ">
-            <div style="
-                text-align:center;
-                font-weight:600;
-                font-size:13px;
-                margin-bottom:8px;
-                color:{text_color};
-            ">
-                {labels[i]} • {dia.strftime('%d/%m')}
-            </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # =====================
-    # BLOQUEADOS
-    # =====================
-    if bloqueado:
-        if is_feriado:
+        cols = st.columns(7)
+        labels = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]
+        
+        for i, dia in enumerate(dias):
+            col = cols[i]
+            iso = dia.isoformat()
+        
+            is_weekend = i in (0, 6)
+            is_feriado = dia in feriados
+            bloqueado = is_weekend or is_feriado
+        
+            border_color = "#F2A6A6" if bloqueado else "#DDD"
+            bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
+            text_color = "#C62828" if bloqueado else "#0A0A0A"
+        
             col.markdown(
-                f"<div style='font-size:12px;color:{text_color};font-weight:500'>"
-                f"{feriados[dia]}"
-                f"</div>",
+                f"""
+                <div style="
+                    border:1.5px solid {border_color};
+                    background:{bg_color};
+                    border-radius:12px;
+                    padding:12px;
+                    min-height:190px;
+                ">
+                    <div style="
+                        text-align:center;
+                        font-weight:600;
+                        font-size:13px;
+                        margin-bottom:8px;
+                        color:{text_color};
+                    ">
+                        {labels[i]} • {dia.strftime('%d/%m')}
+                    </div>
+                """,
                 unsafe_allow_html=True,
             )
-        else:
-            col.markdown(
-                "<div style='font-size:12px;color:#C62828'>Fim de semana</div>",
-                unsafe_allow_html=True,
-            )
-
-    # =====================
-    # DIA ÚTIL
-    # =====================
-    else:
-        loja = col.selectbox(
-            "Loja",
-            ["Selecione"] + lojas_validas,
-            key=f"r_loja_{iso}",
-            label_visibility="collapsed",
-        )
-
-        obs = col.text_area(
-            "Obs",
-            key=f"r_obs_{iso}",
-            height=60,
-            label_visibility="collapsed",
-        )
-
-        if loja != "Selecione":
-            if col.button("Agendar", key=f"r_btn_{iso}"):
+        
+            # =====================
+            # BLOQUEADOS
+            # =====================
+            if bloqueado:
+                if is_feriado:
+                    col.markdown(
+                        f"<div style='font-size:12px;color:{text_color};font-weight:500'>"
+                        f"{feriados[dia]}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    col.markdown(
+                        "<div style='font-size:12px;color:#C62828'>Fim de semana</div>",
+                        unsafe_allow_html=True,
+                    )
+        
+            # =====================
+            # DIA ÚTIL
+            # =====================
+            else:
+                loja = col.selectbox(
+                    "Loja",
+                    ["Selecione"] + lojas_validas,
+                    key=f"r_loja_{iso}",
+                    label_visibility="collapsed",
+                )
+        
+                obs = col.text_area(
+                    "Obs",
+                    key=f"r_obs_{iso}",
+                    height=60,
+                    label_visibility="collapsed",
+                )
+        
+                if loja != "Selecione":
+                    if col.button("Agendar", key=f"r_btn_{iso}"):
 
 
         c1, c2 = st.columns(2)
