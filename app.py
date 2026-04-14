@@ -528,9 +528,6 @@ st.title("Check-list de Acompanhamento")
 tab_roteiro, tab_checklist = st.tabs(["🗓️ Roteiro", "✅ Checklist"])
 
 # ======================================================
-# 🗓️ TAB ROTEIRO
-# ======================================================
-# ======================================================
 # 🗓️ TAB ROTEIRO (COM LAYOUT DE CALENDÁRIO EM CARDS)
 # ======================================================
 with tab_roteiro:
@@ -592,7 +589,7 @@ with tab_roteiro:
 
     if coordenador_r == "Selecione":
         st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
-        st.stop()
+    else
 
     # =========================
     # SEMANA
