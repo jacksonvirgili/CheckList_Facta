@@ -532,25 +532,31 @@ with tab_checklist:
     # ===== SELECTS FORA DO FORM =====
     regional = st.selectbox(
         "Regional",
-        options=["Selecione"] + list(hierarquia.keys())
+        options=["Selecione"] + list(hierarquia.keys()),
+        key="chk_regional"
     )
-
+    
     coordenador = "Selecione"
     loja = "Selecione"
-
+    
     if regional != "Selecione":
         coordenador = st.selectbox(
             "Coordenador",
-            options=["Selecione"] + list(hierarquia[regional].keys())
+            options=["Selecione"] + list(hierarquia[regional].keys()),
+            key="chk_coordenador"
         )
-
+    
     if coordenador != "Selecione":
         loja = st.selectbox(
             "Loja",
-            options=["Selecione"] + hierarquia[regional][coordenador]
+            options=["Selecione"] + hierarquia[regional][coordenador],
+            key="chk_loja"
         )
-
-    supervisor = st.text_input("Supervisor de Loja")
+    
+    supervisor = st.text_input(
+        "Supervisor de Loja",
+        key="chk_supervisor"
+    )
 
     st.divider()
 
