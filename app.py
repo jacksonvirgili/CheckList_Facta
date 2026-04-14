@@ -833,8 +833,12 @@ with tab_checklist:
         enviar = st.form_submit_button("Enviar Checklist")
 
         if enviar:
-            if not confirmar or not localizacao:
-                st.error("Validação obrigatória.")
+            if not confirmar:
+                st.error("Marque a autorização de localização.")
+                st.stop()
+        
+            if not localizacao:
+                st.error("Localização não capturada pelo navegador.")
                 st.stop()
 
             agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
