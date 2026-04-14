@@ -770,19 +770,35 @@ with tab_checklist:
     )
 
     st.divider()
-
-    # =====================
-    # LOCALIZAÇÃO (AUTOMÁTICA + ESTÁVEL)
-    # =====================
+    
+# =====================
+# LOCALIZAÇÃO (AÇÃO EXPLÍCITA – ÚNICA FORMA CONFIÁVEL)
+# =====================
+    st.markdown("### 📍 Localização")
+    
     if "chk_localizacao" not in st.session_state:
+        st.session_state["chk_localizacao"] = None
+    
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        capturar_localizacao = st.button("📍 Capturar localização")
+    
+    with col2:
+        if st.session_state["chk_localizacao"]:
+            st.success("Localização capturada ✅")
+        else:
+            st.info("Clique em **Capturar localização** antes de enviar o checklist.")
+    
+    if capturar_localizacao:
         st.session_state["chk_localizacao"] = streamlit_js_eval(
             js_expressions="""
             new Promise((resolve) => {
-                if (!('geolocation' in navigator)) {
-                    resolve({ error: true, message: 'Geolocalização não suportada' });
+                if (!navigator.geolocation) {
+                    resolve({ error: true, message: "Geolocalização não suportada" });
                     return;
                 }
-
+    
                 navigator.geolocation.getCurrentPosition(
                     (pos) => resolve({
                         latitude: pos.coords.latitude,
@@ -791,19 +807,19 @@ with tab_checklist:
                     }),
                     (err) => resolve({
                         error: true,
-                        message: err.message || 'Erro ao obter localização'
+                        message: err.message || "Erro ao obter localização"
                     }),
                     {
                         enableHighAccuracy: true,
-                        timeout: 12000,
+                        timeout: 15000,
                         maximumAge: 0
                     }
                 );
             })
             """,
-            key="get_location_once"
+            key="get_location_manual"
         )
-
+    
     localizacao = st.session_state["chk_localizacao"]
 
     # Aviso amigável (igual ao original)
