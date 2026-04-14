@@ -446,143 +446,200 @@ with tab_roteiro:
             _date(ano,12,25):"Natal",
         }
 
-    def ensure_roteiros_header(ws):
-        headers = ["REGIONAL", "COORDENADOR", "LOJA", "SUPERVISOR", "DATA", "OBS"]
-        if ws.row_values(1) != headers:
-            ws.insert_row(headers, 1)
+ def carregar_roteiros():
+        try:
+            ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
+            dados = ws.get_all_records()
+            mapa = {}
 
-    def salvar_roteiro(linha):
-        ws = get_worksheet(gc, SHEET_ID, NOME_ABA_ROTEIROS)
-        ensure_roteiros_header(ws)
-        append_with_retry(ws, linha)
+            for r in dados:
+                data = r.get("DATA")
+                if data:
+                    mapa[data] = {
+                        "loja": r.get("LOJA", "Selecione"),
+                        "obs": r.get("OBS", "")
+                    }
+            return mapa
+        except:
+            return {}
 
-    regional = st.selectbox("Regional", ["Selecione"] + list(hierarquia.keys()))
+    # =========================
+    # ESTADO
+    # =========================
 
-    if regional != "Selecione":
-        coordenador = st.selectbox(
-            "Coordenador",
-            ["Selecione"] + list(hierarquia[regional].keys())
-        )
+    if "rot_agendamentos" not in st.session_state:
+        st.session_state["rot_agendamentos"] = carregar_roteiros()
+
+    # =========================
+    # HIERARQUIA
+    # =========================
+
+    regionais, _, _ = get_opcoes_hierarquia(hierarquia, "Selecione", "Selecione")
+    regional_r = st.selectbox("Regional", regionais, key="rot_regional")
+
+    _, coordenadores, _ = get_opcoes_hierarquia(hierarquia, regional_r, "Selecione")
+    coordenador_r = st.selectbox("Coordenador", coordenadores, key="rot_coordenador")
+
+    _, _, lojas_da_coord = get_opcoes_hierarquia(hierarquia, regional_r, coordenador_r)
+    lojas_opcoes = [l for l in lojas_da_coord if l != "Selecione"]
+
+    if coordenador_r == "Selecione":
+        st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
     else:
-        coordenador = "Selecione"
-
-    if coordenador != "Selecione":
-        lojas = hierarquia[regional][coordenador]
+        # =========================
+        # SEMANA
+        # =========================
 
         hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
-        if "rot_week" not in st.session_state:
-            st.session_state["rot_week"] = proximo_domingo(hoje)
 
-        inicio = st.session_state["rot_week"]
-        dias = [inicio + timedelta(days=i) for i in range(7)]
-        feriados = feriados_br(inicio.year)
+        if "rot_week_start" not in st.session_state:
+            st.session_state["rot_week_start"] = proximo_domingo(hoje)
 
-# =========================
-# CALENDÁRIO
-# =========================
+        week_start = st.session_state["rot_week_start"]
+        week_days = [week_start + timedelta(days=i) for i in range(7)]
 
-cols = st.columns(7)
-labels = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]
-
-for i, dia in enumerate(dias):
-    col = cols[i]
-    iso = dia.isoformat()
-
-    is_weekend = i in (0, 6)
-    is_feriado = dia in feriados
-    bloqueado = is_weekend or is_feriado
-
-    border_color = "#F2A6A6" if bloqueado else "#DDD"
-    bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
-    text_color = "#C62828" if bloqueado else "#0A0A0A"
-
-    col.markdown(
-        f"""
-        <div style="
-            border:1.5px solid {border_color};
-            background:{bg_color};
-            border-radius:12px;
-            padding:12px;
-            min-height:190px;
-        ">
-            <div style="
-                text-align:center;
-                font-weight:600;
-                font-size:13px;
-                margin-bottom:8px;
-                color:{text_color};
-            ">
-                {labels[i]} • {dia.strftime('%d/%m')}
-            </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # =====================
-    # BLOQUEADOS
-    # =====================
-    if bloqueado:
-        if is_feriado:
-            col.markdown(
-                f"<div style='font-size:12px;color:{text_color};font-weight:500'>"
-                f"{feriados[dia]}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            col.markdown(
-                "<div style='font-size:12px;color:#C62828'>Fim de semana</div>",
-                unsafe_allow_html=True,
-            )
-
-    # =====================
-    # DIA ÚTIL
-    # =====================
-    else:
-        loja = col.selectbox(
-            "Loja",
-            ["Selecione"] + lojas_validas,
-            key=f"r_loja_{iso}",
-            label_visibility="collapsed",
+        st.markdown(
+            f"**Semana de {week_start.strftime('%d/%m/%Y')} até "
+            f"{(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}**"
         )
 
-        obs = col.text_area(
-            "Obs",
-            key=f"r_obs_{iso}",
-            height=60,
-            label_visibility="collapsed",
-        )
+        # =========================
+        # FERIADOS
+        # =========================
 
-        if loja != "Selecione":
-            if col.button("Agendar", key=f"r_btn_{iso}"):
-                salvar_roteiro(
-                    gc,
-                    SHEET_ID,
-                    [regional, coordenador, loja, "", iso, obs]
+        feriados_map = brasil_feriados(week_start.year)
+
+        if (week_start + timedelta(days=6)).year != week_start.year:
+            feriados_map.update(
+                brasil_feriados((week_start + timedelta(days=6)).year)
+            )
+
+        # =========================
+        # CALENDÁRIO
+        # =========================
+
+        cols_days = st.columns(7)
+        weekday_labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+
+        for i, dia in enumerate(week_days):
+            box = cols_days[i]
+            dia_iso = dia.strftime("%Y-%m-%d")
+            dia_label = weekday_labels[i]
+
+            is_weekend = i == 0 or i == 6
+            is_feriado = dia in feriados_map
+            bloqueado = is_weekend or is_feriado
+
+            agendamento = st.session_state["rot_agendamentos"].get(dia_iso, {})
+            loja_valor = agendamento.get("loja", "Selecione")
+            obs_valor = agendamento.get("obs", "")
+
+            border_color = "#F2A6A6" if bloqueado else "#DDD"
+            bg_color = "#FFF5F5" if bloqueado else "#FFFFFF"
+
+            box.markdown(
+                f"""
+                <div style="
+                    border:1.5px solid {border_color};
+                    background:{bg_color};
+                    border-radius:12px;
+                    padding:10px;
+                    min-height:190px;
+                ">
+                <div style="
+                    text-align:center;
+                    font-weight:600;
+                    font-size:13px;
+                    margin-bottom:8px;
+                    color:{'#D32F2F' if bloqueado else '#0A0A0A'};
+                ">
+                {dia_label} • {dia.strftime('%d/%m')}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            if is_feriado:
+                box.markdown(
+                    f"<div style='font-size:11px;color:#C62828'>{feriados_map[dia]}</div>",
+                    unsafe_allow_html=True,
                 )
-                st.success("✅ Salvo")
+
+            if bloqueado:
+                msg = "Feriado" if is_feriado else "Fim de semana"
+                box.markdown(
+                    f"<div style='color:#C62828'>{msg}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                opcoes = ["Selecione"] + lojas_opcoes
+                index = opcoes.index(loja_valor) if loja_valor in opcoes else 0
+
+                loja_escolhida = box.selectbox(
+                    "Loja",
+                    opcoes,
+                    index=index,
+                    key=f"loja_{dia_iso}",
+                    label_visibility="collapsed",
+                )
+
+                obs = box.text_area(
+                    "Obs",
+                    value=obs_valor,
+                    key=f"obs_{dia_iso}",
+                    height=60,
+                    label_visibility="collapsed",
+                )
+
+                if loja_escolhida != "Selecione":
+                    if box.button("Agendar", key=f"ag_{dia_iso}"):
+                        linha = [
+                            regional_r,
+                            coordenador_r,
+                            loja_escolhida,
+                            "",
+                            dia_iso,
+                            obs,
+                        ]
+                        try:
+                            salvar_roteiro(gc, SHEET_ID, linha)
+                            st.session_state["rot_agendamentos"][dia_iso] = {
+                                "loja": loja_escolhida,
+                                "obs": obs,
+                            }
+                            st.success("Agendado ✅")
+                            time.sleep(0.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erro ao salvar")
+                            st.exception(e)
+                else:
+                    box.button(
+                        "Agendar",
+                        disabled=True,
+                        key=f"ag_dis_{dia_iso}"
+                    )
+
+            box.markdown("</div>", unsafe_allow_html=True)
+
+        # =========================
+        # NAVEGAÇÃO
+        # =========================
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        nav = st.columns([1, 2, 1])[1]
+        c1, c2 = nav.columns(2)
+
+        with c1:
+            if st.button("◀️ Semana anterior"):
+                st.session_state["rot_week_start"] -= timedelta(days=7)
                 st.rerun()
-        else:
-            col.button(
-                "Agendar",
-                disabled=True,
-                key=f"r_btn_dis_{iso}"
-            )
 
-    # ✅ FECHA A DIV HTML
-    col.markdown("</div>", unsafe_allow_html=True)
-
-# =====================
-# NAVEGAÇÃO (FORA DO FOR)
-# =====================
-c1, c2 = st.columns(2)
-if c1.button("◀ Semana anterior"):
-    st.session_state["rot_week"] -= timedelta(days=7)
-    st.rerun()
-
-if c2.button("Próxima semana ▶"):
-    st.session_state["rot_week"] += timedelta(days=7)
-    st.rerun()
+        with c2:
+            if st.button("Próxima semana ▶️"):
+                st.session_state["rot_week_start"] += timedelta(days=7)
+                st.rerun()
 
 # ======================================================
 # ✅ TAB CHECKLIST
