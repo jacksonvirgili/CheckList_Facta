@@ -589,7 +589,7 @@ with tab_roteiro:
 
     if coordenador_r == "Selecione":
         st.info("Selecione **Regional** e **Coordenador** para visualizar a agenda.")
-    else
+    else:
 
     # =========================
     # SEMANA
