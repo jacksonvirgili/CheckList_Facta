@@ -531,7 +531,7 @@ hierarquia = {
             "94390 - LOJA PORTO ALEGRE - MARECHAL - RS",
         ],
         "THAMIRES IZIDORO DO NASCIMENTO SILVA": [
-            "1487 - LOJA CAMPO BOM - RS"
+            "1487 - LOJA CAMPO BOM - RS",
             "1402 - LOJA CANOAS - CENTRO - RS",
             "1458 - LOJA CANOAS - GUAJUVIRAS - RS",
             "1476 - LOJA NOVO HAMBURGO - RS",
