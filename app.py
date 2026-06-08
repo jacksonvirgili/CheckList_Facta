@@ -34,10 +34,9 @@ scope = [
 ]
 
 # =====================
-# GOOGLE SHEETS (credenciais)
+# GOOGLE SHEETS 
 # =====================
 
-# Certifique-se de ter configurado st.secrets["gcp_service_account"] corretamente
 service_account_info = dict(st.secrets["gcp_service_account"])
 
 credentials = Credentials.from_service_account_info(
@@ -47,7 +46,7 @@ credentials = Credentials.from_service_account_info(
 gc = gspread.authorize(credentials)
 
 # =====================
-# FUNÇÕES AUXILIARES (Sheets)
+# FUNÇÕES AUXILIARES 
 # =====================
 
 def get_worksheet(gc_client, sheet_id: str, tab_name: str):
@@ -95,17 +94,17 @@ def append_with_retry(ws, row, retries: int = 4):
         except APIError as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
             if code in (429, 500, 503) and i < retries - 1:
-                time.sleep((2 ** i) + 0.2)  # backoff exponencial simples
+                time.sleep((2 ** i) + 0.2)  
                 continue
             raise
 
 # =====================
-# FUNÇÃO PARA GERAR PDF (Resumo por Seção após Perguntas e Respostas)
+# FUNÇÃO PARA GERAR PDF
 # =====================
 
 def gerar_pdf_checklist(
     agora, regional, coordenador, loja, supervisor,
-    latitude, longitude, precisao,  # mantidos por compatibilidade
+    latitude, longitude, precisao,  
     perguntas, respostas
 ):
     """
@@ -145,17 +144,14 @@ def gerar_pdf_checklist(
 
     elementos = []
 
-    # Largura útil da página
+
     page_w, _ = A4
     content_w = page_w - left - right
 
-    # -------------------------------
-    # Cabeçalho e Identificação
-    # -------------------------------
+
     elementos.append(Paragraph("Check-list de Acompanhamento", styles["Titulo"]))
     elementos.append(Paragraph("Identificação", styles["SubTitulo"]))
 
-    # -> Removidos lat/long/precisão do quadro
     meta_data = [
         ["Data/Hora", agora],
         ["Regional", regional],
@@ -188,7 +184,7 @@ def gerar_pdf_checklist(
     elementos.append(Spacer(1, 8))
 
     # -------------------------------
-    # Normalização das respostas (para contar Sim/Não com robustez)
+    # Normalização das respostas 
     # -------------------------------
     import unicodedata
     def normaliza(txt):
@@ -216,7 +212,7 @@ def gerar_pdf_checklist(
     elementos.append(Spacer(1, 6))
 
     # -------------------------------
-    # Perguntas e respostas (com wrap)
+    # Perguntas e respostas
     # -------------------------------
     elementos.append(Paragraph("Perguntas e Respostas", styles["SubTitulo"]))
 
@@ -231,7 +227,7 @@ def gerar_pdf_checklist(
          Paragraph("Resposta", styles["Normal10"])]
     ]
 
-    # Linhas com as perguntas como Paragraph (wrap automático)
+    #  (wrap automático)
     for idx, (p, r) in enumerate(zip(perguntas, respostas), start=1):
         p_par = Paragraph(p, styles["Pergunta"])
         r_par = Paragraph(r, styles["Normal10"])
@@ -240,8 +236,8 @@ def gerar_pdf_checklist(
     tabela_qa = Table(
         linhas_qa,
         colWidths=[num_w, pergunta_w, resp_w],
-        repeatRows=1,      # repete cabeçalho em cada página
-        splitByRow=1,      # permite quebrar linhas entre páginas
+        repeatRows=1,     
+        splitByRow=1,     
         hAlign="LEFT"
     )
     tabela_qa.setStyle(TableStyle([
@@ -268,7 +264,7 @@ def gerar_pdf_checklist(
     elementos.append(Spacer(1, 8))
 
     # -------------------------------
-    # Resumo por Seção (AGORA AQUI, APÓS A TABELA)
+    # Resumo por Seção 
     # -------------------------------
     secoes = [
         ("AVALIAR", 1, 3),
@@ -284,7 +280,7 @@ def gerar_pdf_checklist(
 
     linhas_sec = [["Seção", "Sim", "Não", "Total", "% Sim"]]
     for nome, ini, fim in secoes:
-        sub_rsps = respostas_norm[ini-1:fim]  # slice 0-based
+        sub_rsps = respostas_norm[ini-1:fim]  
         tot = len(sub_rsps)
         sim = sum(1 for r in sub_rsps if r == "sim")
         nao = sum(1 for r in sub_rsps if r == "nao")
@@ -338,7 +334,7 @@ st.subheader("Identificação")
 # =====================
 # HIERARQUIA
 # =====================
-# COLE AQUI O SEU DICIONÁRIO 'hierarquia' COMPLETO, EXATAMENTE COMO ESTÁ HOJE
+
 hierarquia = {
     "MAYARA NOVAIS LOPES": {
         "ADRIELE FERNANDA VIEIRA DA SILVA": [
@@ -730,7 +726,6 @@ st.divider()
 # =====================
 # VALIDAÇÃO DE LOCALIZAÇÃO
 # =====================
-# Key estável para não reexecutar a cada rerun sem necessidade
 localizacao = streamlit_js_eval(
     js_expressions="""
     new Promise((resolve) => {
@@ -756,7 +751,6 @@ localizacao = streamlit_js_eval(
     key="get_location_once"
 )
 
-# Mostra aviso se o navegador retornou erro
 if isinstance(localizacao, dict) and localizacao.get("error"):
     st.warning(
         "Não foi possível obter a localização necessária. "
@@ -814,7 +808,7 @@ with st.form("checklist_form"):
 
     for i, pergunta in enumerate(perguntas, start=1):
 
-        # Títulos de seção (apenas visual)
+        # Títulos de seção 
         if i == 1:
             st.subheader("AVALIAR")
         elif i == 4:
@@ -853,12 +847,12 @@ with st.form("checklist_form"):
     # =====================
     if enviar:
 
-        # 🔒 Valida checkbox
+        #  Valida checkbox
         if not confirmar_localizacao:
             st.error("Você precisa autorizar a captura da localização para enviar.")
             st.stop()
 
-        # 🔒 Valida captura real da localização
+        #  Valida captura real da localização
         if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
             st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador e tente novamente.")
             st.stop()
@@ -890,11 +884,11 @@ with st.form("checklist_form"):
             *respostas
         ]
 
-        # 🔐 Abre a planilha/aba só no envio (evita estourar cota de leitura)
+        #  Abre a planilha/aba só no envio 
         ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
         append_with_retry(ws, linha)
 
-        # ✅ Gera o PDF com try/except (se falhar, mostra o erro)
+        #  Gera o PDF com try/except 
         pdf_bytes = None
         try:
             pdf_buffer = gerar_pdf_checklist(
@@ -924,12 +918,12 @@ with st.form("checklist_form"):
             st.session_state["just_submitted"] = False
 
 # =====================
-# FEEDBACK (SUCESSO + DOWNLOAD) FORA DO FORM — LOGO ABAIXO DO SUBMIT
+# FEEDBACK (SUCESSO + DOWNLOAD) 
 # =====================
 if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
-    # Colocando o feedback *depois* do bloco do form garante que apareça abaixo do submit
+
     st.success("Checklist enviado com sucesso ✅")
-    # Espaçamento para destacar o botão
+
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
     st.download_button(
         label="📄 Baixar PDF do checklist",
@@ -938,10 +932,10 @@ if st.session_state.get("pdf_bytes") and st.session_state.get("just_submitted"):
         mime="application/pdf",
         key="download_pdf_together"
     )
-    # Evita repetir a mensagem em interações futuras
+
     st.session_state["just_submitted"] = False
 elif st.session_state.get("pdf_bytes"):
-    # Opcional: manter um botão de último envio (sem mensagem)
+ 
     st.download_button(
         label="📄 Baixar PDF do checklist (último envio)",
         data=st.session_state["pdf_bytes"],
