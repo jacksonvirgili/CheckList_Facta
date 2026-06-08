@@ -719,7 +719,17 @@ if coordenador != "Selecione":
         options=["Selecione"] + hierarquia[regional][coordenador]
     )
 
-supervisor = st.text_input("Supervisor de Loja")
+import re
+
+supervisor_input = st.text_input(
+    "Supervisor de Loja",
+    key="supervisor"
+)
+
+supervisor = re.sub(r"[^A-Za-zÀ-ÿ\s]", "", supervisor_input).upper()
+
+if supervisor != supervisor_input:
+    st.warning("O campo Supervisor de Loja aceita apenas letras.")
 
 st.divider()
 
