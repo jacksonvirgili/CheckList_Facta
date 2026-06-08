@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 import gspread
+import re
 from gspread.exceptions import APIError, WorksheetNotFound
 from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
@@ -718,8 +719,6 @@ if coordenador != "Selecione":
         "Loja",
         options=["Selecione"] + hierarquia[regional][coordenador]
     )
-
-import re
 
 supervisor_input = st.text_input(
     "Supervisor de Loja",
