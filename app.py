@@ -23,8 +23,10 @@ st.set_page_config(page_title="CheckList Gerencial Facta")
 # CONFIGURAÇÕES
 # =====================
 
-SHEET_ID = "11JaCc4y-htBW-cxbvbMBV28GHYlORbMM6345TSaXcgQ"
-NOME_ABA = "Respostas"
+
+SHEET_ID = st.secrets["SHEET_ID"]
+NOME_ABA = st.secrets["NOME_ABA"]
+
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
