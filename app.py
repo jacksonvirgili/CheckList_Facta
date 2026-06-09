@@ -692,7 +692,7 @@ hierarquia = {
             "61055 - LOJA SAQUAREMA - RJ",
             "61053 - LOJA CABO FRIO - RJ",
             "61052 - LOJA CAMPO DOS GOYTACAZES 1 - RJ",
-            "61051 - LOJA ARARUAMA - RJ",
+            "61051 - LOJA ARARAUAMA - RJ",
             "61058 - LOJA SAO PEDRO DA ALDEIA - RJ",
         ],
 
@@ -729,6 +729,10 @@ supervisor = re.sub(r"[^A-Za-zÀ-ÿ\s]", "", supervisor_input).upper()
 
 if supervisor != supervisor_input:
     st.warning("O campo Supervisor de Loja aceita apenas letras.")
+
+# Valida nome e sobrenome durante o preenchimento
+if supervisor.strip() and len(supervisor.split()) < 2:
+    st.warning("Informe nome e sobrenome do Supervisor de Loja.")
 
 st.divider()
 
@@ -877,6 +881,11 @@ with st.form("checklist_form"):
             or not supervisor.strip()
         ):
             st.error("Preencha todos os campos obrigatórios antes de enviar.")
+            st.stop()
+
+        # Exige nome e sobrenome do supervisor
+        if len(supervisor.split()) < 2:
+            st.error("O Supervisor de Loja deve conter nome e sobrenome.")
             st.stop()
 
         agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
