@@ -720,18 +720,29 @@ if coordenador != "Selecione":
         options=["Selecione"] + hierarquia[regional][coordenador]
     )
 
-supervisor_input = st.text_input(
+# =====================
+# SUPERVISOR DE LOJA
+# Formata em maiúsculas enquanto a pessoa digita (on_change)
+# e remove caracteres inválidos diretamente na entrada.
+# =====================
+
+def formatar_supervisor():
+    valor = st.session_state.supervisor
+    # remove tudo que não for letra ou espaço, e deixa em maiúsculas
+    valor_limpo = re.sub(r"[^A-Za-zÀ-ÿ\s]", "", valor).upper()
+    st.session_state.supervisor = valor_limpo
+
+st.text_input(
     "Supervisor de Loja",
-    key="supervisor"
+    key="supervisor",
+    on_change=formatar_supervisor
 )
 
-supervisor = re.sub(r"[^A-Za-zÀ-ÿ\s]", "", supervisor_input).upper()
+# Variável usada no envio e no PDF (já limpa e em maiúsculas)
+supervisor = st.session_state.get("supervisor", "").strip()
 
-if supervisor != supervisor_input:
-    st.warning("O campo Supervisor de Loja aceita apenas letras.")
-
-# Valida nome e sobrenome durante o preenchimento
-if supervisor.strip() and len(supervisor.split()) < 2:
+# Avisa só se faltar nome e sobrenome
+if supervisor and len(supervisor.split()) < 2:
     st.warning("Informe nome e sobrenome do Supervisor de Loja.")
 
 st.divider()
