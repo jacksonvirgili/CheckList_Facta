@@ -626,7 +626,6 @@ with st.form("checklist_form"):
         codigo_loja = extrair_codigo_loja(loja)
 
         linha = [
-            agora,
             regional,
             coordenador,
             loja,
