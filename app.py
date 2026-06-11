@@ -100,9 +100,6 @@ def extrair_codigo_loja(loja_completa):
     # pega o que vem antes do primeiro ' - ' e limpa espaços
     return str(loja_completa).split(" - ")[0].strip()
 
-    
-  
-
    
 # INTERFACE
 # =====================
@@ -624,7 +621,6 @@ with st.form("checklist_form"):
             st.error("O Supervisor de Loja deve conter nome e sobrenome.")
             st.stop()
 
-        agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
 
         # Extrai só o código da loja (ex: '1421 - LOJA ESTEIO - RS' -> '1421')
         codigo_loja = extrair_codigo_loja(loja)
