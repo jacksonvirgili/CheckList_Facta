@@ -3,7 +3,6 @@ import streamlit as st
 import gspread
 import re
 from gspread.exceptions import APIError, WorksheetNotFound
-from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
 
 
