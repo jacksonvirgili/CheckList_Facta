@@ -99,6 +99,18 @@ def append_with_retry(ws, row, retries: int = 4):
                 continue
             raise
 
+
+def extrair_codigo_loja(loja_completa):
+    """
+    Extrai só o código da loja a partir da string completa.
+    Ex: '1421 - LOJA ESTEIO - RS' -> '1421'
+    Retorna como texto, para servir de chave de cruzamento com outras bases.
+    """
+    if not loja_completa or loja_completa == "Selecione":
+        return ""
+    # pega o que vem antes do primeiro ' - ' e limpa espaços
+    return str(loja_completa).split(" - ")[0].strip()
+
 # =====================
 # FUNÇÃO PARA GERAR PDF
 # =====================
@@ -901,6 +913,9 @@ with st.form("checklist_form"):
 
         agora = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d %H:%M:%S")
 
+        # Extrai só o código da loja (ex: '1421 - LOJA ESTEIO - RS' -> '1421')
+        codigo_loja = extrair_codigo_loja(loja)
+
         linha = [
             agora,
             regional,
@@ -910,7 +925,8 @@ with st.form("checklist_form"):
             latitude,
             longitude,
             precisao,
-            *respostas
+            *respostas,
+            codigo_loja        # <-- nova coluna no FINAL (não desloca as existentes)
         ]
 
         #  Abre a planilha/aba só no envio 
