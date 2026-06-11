@@ -629,9 +629,6 @@ with st.form("checklist_form"):
             coordenador,
             loja,
             supervisor,
-            latitude,
-            longitude,
-            precisao,
             *respostas,
             codigo_loja        # <-- nova coluna no FINAL (não desloca as existentes)
         ]
