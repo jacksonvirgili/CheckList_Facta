@@ -610,20 +610,6 @@ with st.form("checklist_form"):
     # =====================
     if enviar:
 
-        #  Valida checkbox
-        if not confirmar_localizacao:
-            st.error("Você precisa autorizar a captura da localização para enviar.")
-            st.stop()
-
-        #  Valida captura real da localização
-        if not localizacao or (isinstance(localizacao, dict) and localizacao.get("error")):
-            st.error("Não foi possível capturar sua localização. Verifique as permissões do navegador e tente novamente.")
-            st.stop()
-
-        latitude = localizacao["latitude"]
-        longitude = localizacao["longitude"]
-        precisao = localizacao["accuracy"]
-
         if (
             regional == "Selecione"
             or coordenador == "Selecione"
