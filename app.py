@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-import time
-from io import BytesIO
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import streamlit as st
 import gspread
@@ -11,12 +6,6 @@ from gspread.exceptions import APIError, WorksheetNotFound
 from streamlit_js_eval import streamlit_js_eval
 from google.oauth2.service_account import Credentials
 
-# ReportLab - PDF
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 st.set_page_config(page_title="CheckList Gerencial Facta")
 
@@ -613,11 +602,6 @@ with st.form("checklist_form"):
         )
         respostas.append(resposta)
 
-    st.divider()
-
-    confirmar_localizacao = st.checkbox(
-        "Autorizo a captura da minha localização para envio do checklist"
-    )
 
     enviar = st.form_submit_button("Enviar Checklist")
 
@@ -676,33 +660,4 @@ with st.form("checklist_form"):
         ws = get_worksheet(gc, SHEET_ID, NOME_ABA)
         append_with_retry(ws, linha)
 
-        #  Gera o PDF com try/except 
-        pdf_bytes = None
-        try:
-            pdf_buffer = gerar_pdf_checklist(
-                agora=agora,
-                regional=regional,
-                coordenador=coordenador,
-                loja=loja,
-                supervisor=supervisor,
-                latitude=latitude,
-                longitude=longitude,
-                precisao=precisao,
-                perguntas=perguntas,
-                respostas=respostas
-            )
-            pdf_bytes = pdf_buffer.getvalue()
-        except Exception as e:
-            st.error("⚠️ Ocorreu um erro ao gerar o PDF.")
-            st.exception(e)
-
-        if pdf_bytes:
-            st.session_state["pdf_bytes"] = pdf_bytes
-            st.session_state["pdf_name"] = f"checklist_{agora.replace(':','-').replace(' ', '_')}.pdf"
-            st.session_state["just_submitted"] = True
-        else:
-            st.session_state["pdf_bytes"] = None
-            st.session_state["pdf_name"] = None
-            st.session_state["just_submitted"] = False
-
-
+     
